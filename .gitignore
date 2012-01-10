@@ -1,0 +1,7 @@
+*.dSYM
+*.o
+*.pyc
+build
+doc/.build
+util/create_discodb
+util/query_discodb
