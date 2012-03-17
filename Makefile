@@ -16,7 +16,7 @@ clean:
 	rm -rf build
 
 install:
-	$(PYTHONENVS) $(PYTHON) setup.py install --root=$(DESTDIR)/ --prefix=$(prefix)
+	$(PYTHONENVS) $(PYTHON) setup.py install --root=$(DESTDIR)/ --prefix=$(prefix) $(PY_INSTALL_OPTS)
 
 doc:
 	(cd doc && $(MAKE) SPHINXOPTS=$(SPHINXOPTS) html)
