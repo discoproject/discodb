@@ -62,7 +62,9 @@ struct ddb_packed{
     struct ddb_codebook codebook[DDB_CODEBOOK_SIZE];
 };
 
+#ifdef DDB_PROFILE
 static void print_mem_usage(const struct ddb_cons *db);
+#endif
 
 static int _buffer_grow(struct ddb_packed *p, uint64_t size)
 {
