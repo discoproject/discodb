@@ -27,15 +27,15 @@ void ddb_map_free(struct ddb_map *map);
 
 uint32_t ddb_map_num_items(const struct ddb_map *map);
 
-uint64_t *ddb_map_insert_int(struct ddb_map *map, uint32_t key);
+uintptr_t *ddb_map_insert_int(struct ddb_map *map, uint32_t key);
 
-uint64_t *ddb_map_insert_str(struct ddb_map *map,
-                             const struct ddb_entry *key);
+uintptr_t *ddb_map_insert_str(struct ddb_map *map,
+                              const struct ddb_entry *key);
 
-uint64_t *ddb_map_lookup_int(const struct ddb_map *map, uint32_t key);
+uintptr_t *ddb_map_lookup_int(const struct ddb_map *map, uint32_t key);
 
-uint64_t *ddb_map_lookup_str(const struct ddb_map *map,
-                             const struct ddb_entry *key);
+uintptr_t *ddb_map_lookup_str(const struct ddb_map *map,
+                              const struct ddb_entry *key);
 
 
 struct ddb_map_cursor *ddb_map_cursor_new(const struct ddb_map *map);
@@ -46,11 +46,11 @@ int ddb_map_next_str(struct ddb_map_cursor *c, struct ddb_entry *key);
 
 int ddb_map_next_item_int(struct ddb_map_cursor *c,
                           uint32_t *key,
-                          uint64_t **ptr);
+                          uintptr_t **ptr);
 
 int ddb_map_next_item_str(struct ddb_map_cursor *c,
                           struct ddb_entry *key,
-                          uint64_t **ptr);
+                          uintptr_t **ptr);
 
 void ddb_map_cursor_free(struct ddb_map_cursor *c);
 

@@ -117,7 +117,7 @@ static struct ddb_map *collect_frequencies(const struct ddb_map *keys)
     struct ddb_map *freqs = NULL;
     struct ddb_map_cursor *c = NULL;
     struct ddb_entry key;
-    uint64_t *ptr;
+    uintptr_t *ptr;
     uint32_t i;
     int err = -1;
 
@@ -167,7 +167,7 @@ static int sort_symbols(const struct ddb_map *freqs,
     struct ddb_map_cursor *c = NULL;
     struct sortpair *pairs;
     uint32_t symbol;
-    uint64_t *freq;
+    uintptr_t *freq;
     uint32_t num_symbols = ddb_map_num_items(freqs);
     if (!(pairs = calloc(num_symbols, sizeof(struct sortpair))))
         goto err;
@@ -201,7 +201,7 @@ static struct ddb_map *make_codebook(struct hnode *nodes, int num_symbols)
     while (i--){
         if (!nodes[i].num_bits)
             continue;
-        uint64_t *ptr = ddb_map_insert_int(book, nodes[i].symbol);
+        uintptr_t *ptr = ddb_map_insert_int(book, nodes[i].symbol);
         if (ptr)
             *ptr = nodes[i].code | (nodes[i].num_bits << 16);
         else{
@@ -217,7 +217,7 @@ int ddb_save_codemap(
     struct ddb_codebook book[DDB_CODEBOOK_SIZE])
 {
     uint32_t symbol;
-    uint64_t *ptr;
+    uintptr_t *ptr;
     struct ddb_map_cursor *c = NULL;
     if (!(c = ddb_map_cursor_new(codemap)))
         return -1;
@@ -302,7 +302,7 @@ int ddb_compress(const struct ddb_map *codemap, const char *src,
     if (src_len >= 4)
         for (;i < src_len - 4; i++){
             uint32_t key = *(uint32_t*)&src[i];
-            uint64_t *ptr = ddb_map_lookup_int(codemap, key);
+            uintptr_t *ptr = ddb_map_lookup_int(codemap, key);
             if (ptr){
                 uint32_t bits = DDB_HUFF_BITS(*ptr);
                 /* codeword: prefix code by an up bit */

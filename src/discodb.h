@@ -5,8 +5,8 @@
 #include <stdint.h>
 #include <unistd.h>
 
-#define DDB_MAX_NUM_VALUES 4294967295
-#define DDB_MAX_NUM_KEYS 4294967295
+#define DDB_MAX_NUM_VALUES 4294967295U
+#define DDB_MAX_NUM_KEYS 4294967295U
 #define DDB_HASH_MIN_KEYS 25
 
 #define DDB_ERR_OUT_OF_MEMORY 1
