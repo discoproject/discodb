@@ -17,6 +17,7 @@
 #define ATOM_EALLOC              ATOM("ealloc")
 #define ATOM_ECREAT              ATOM("ecreat")
 #define ATOM_ERROR               ATOM("error")
+#define ATOM_NO                  ATOM("no")
 #define ATOM_NULL                ATOM("null")
 
 #define ATOM_DISCODB_CONS        ATOM("discodb_cons")
@@ -415,10 +416,66 @@ ErlDiscoDB_iter_async(ErlDDB *ddb, Message *msg) {
   return ErlDDBIter_new(env, ddb, cursor);
 }
 
+static void
+free_ddb_query_clauses(struct ddb_query_clause *clauses, uint32_t num_clauses) {
+  int i;
+  if (clauses) {
+    for (i = 0; i < num_clauses; i++)
+      if (clauses[i].terms)
+        free(clauses[i].terms);
+    free(clauses);
+  }
+}
+
 static ERL_NIF_TERM
 ErlDiscoDB_query_async(ErlDDB *ddb, Message *msg) {
   ErlNifEnv *env = msg->env;
-  return ATOM_OK;
+  ErlNifBinary literal;
+  ERL_NIF_TERM clause, term, clauses = msg->term;
+  unsigned nclauses = 0, i, j;
+  struct ddb_query_clause *ddb_clauses = NULL;
+  struct ddb_cursor *cursor = NULL;
+
+  if (!enif_get_list_length(env, clauses, &nclauses))
+    goto badarg;
+
+  if (!(ddb_clauses = calloc(nclauses, sizeof(struct ddb_query_clause))))
+    goto ecreat;
+  for (i = 0; enif_get_list_cell(env, clauses, &clause, &clauses); i++) {
+    if (!enif_get_list_length(env, clause, &ddb_clauses[i].num_terms))
+      goto badarg;
+
+    if (!(ddb_clauses[i].terms = calloc(ddb_clauses[i].num_terms, sizeof(struct ddb_query_term))))
+      goto ecreat;
+    for (j = 0; enif_get_list_cell(env, clause, &term, &clause); j++) {
+      int arity;
+      const ERL_NIF_TERM *pair;
+      if (enif_get_tuple(env, term, &arity, &pair)) {
+        if (!(arity == 2 && TERM_EQ(pair[0], ATOM_NO)))
+          goto badarg;
+        ddb_clauses[i].terms[j].nnot = 1;
+        term = pair[1];
+      }
+      if (!enif_inspect_iolist_as_binary(env, term, &literal))
+        goto badarg;
+      ddb_clauses[i].terms[j].key.data = (char *) literal.data;
+      ddb_clauses[i].terms[j].key.length = literal.size;
+    }
+  }
+
+  if (!(cursor = ddb_query(ddb->db, ddb_clauses, nclauses)))
+    goto equery;
+  free_ddb_query_clauses(ddb_clauses, nclauses);
+  return ErlDDBIter_new(env, ddb, cursor);
+ badarg:
+  free_ddb_query_clauses(ddb_clauses, nclauses);
+  return ERROR_BADARG;
+ ecreat:
+  free_ddb_query_clauses(ddb_clauses, nclauses);
+  return ERROR_ECREAT;
+ equery:
+  free_ddb_query_clauses(ddb_clauses, nclauses);
+  return make_ddb_error(env, ddb);
 }
 
 static ERL_NIF_TERM
