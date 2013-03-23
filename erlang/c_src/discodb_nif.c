@@ -363,12 +363,6 @@ ErlDiscoDB_get_async(ErlDDB *ddb, Message *msg) {
   struct ddb_cursor *cursor = NULL;
   if (!(cursor = ddb_getitem(ddb->db, &(struct ddb_entry) {.data=(char *)key.data, .length=key.size})))
     return make_ddb_error(msg->env, ddb);
-
-  if (ddb_notfound(cursor)) {
-    ddb_free_cursor(cursor);
-    return ATOM_ERROR;
-  }
-
   return ErlDDBIter_new(msg->env, ddb, cursor);
 }
 

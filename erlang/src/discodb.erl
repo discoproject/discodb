@@ -16,11 +16,11 @@
          loads/1,
          dump/2,
          dumps/1,
-         query/2,
          get/2,
          keys/1,
          values/1,
-         unique_values/1]).
+         unique_values/1,
+         query/2]).
 
 %% DiscoDBIter
 
@@ -28,6 +28,14 @@
          next/1,
          size/1,
          to_list/1]).
+
+%% Convenience
+-export([list/1,
+         list/3,
+         peek/1,
+         peek/2,
+         peek/3,
+         peek/4]).
 
 str(Bin) when is_binary(Bin) ->
     binary_to_list(Bin);
@@ -132,3 +140,28 @@ size(Iter) ->
 
 to_list(Iter) ->
     lists:reverse(fold(Iter, fun (E, Acc) -> [E|Acc] end, [])).
+
+%% Convenience
+
+list(Iter) ->
+    to_list(Iter).
+
+list(DB, Fun, Arg) ->
+    to_list(call(DB, Fun, Arg)).
+
+peek(Iter) ->
+    peek(Iter, null).
+
+peek(Iter, Default) ->
+    case next(Iter) of
+        null ->
+            Default;
+        <<Entry/binary>> ->
+            Entry
+    end.
+
+peek(DB, Fun, Arg) ->
+    peek(DB, Fun, Arg, null).
+
+peek(DB, Fun, Arg, Default) ->
+    peek(call(DB, Fun, Arg), Default).
