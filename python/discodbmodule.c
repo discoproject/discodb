@@ -615,7 +615,7 @@ static PyObject *
 DiscoDBConstructor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
     DiscoDBConstructor *self = (DiscoDBConstructor *)type->tp_alloc(type, 0);
-    PyObject *ddb_type = NULL;
+    PyTypeObject *ddb_type = &DiscoDBType;
 
     static char *kwlist[] = {"ddb_type", NULL};
 
@@ -625,7 +625,12 @@ DiscoDBConstructor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|O", kwlist, &ddb_type))
       goto Done;
 
-    Py_INCREF(self->ddb_type = ddb_type ? (PyTypeObject *)ddb_type : &DiscoDBType);
+    if (!PyType_Check(ddb_type) || !PyType_IsSubtype(ddb_type, &DiscoDBType)) {
+      PyErr_SetString(DiscoDBError, "Not a valid type.");
+      goto Done;
+    }
+
+    Py_INCREF(self->ddb_type = ddb_type);
 
     self->ddb_cons = ddb_cons_alloc();
     if (self->ddb_cons == NULL)

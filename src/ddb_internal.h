@@ -7,7 +7,7 @@
 #include <ddb_huffman.h>
 #include <ddb_delta.h>
 
-#define DISCODB_MAGIC 0x4D85BE61D14DE5B
+#define DISCODB_MAGIC 0x4D85BE61D14DE5BULL
 
 #define COMPRESS_MIN_TOTAL_SIZE (5 * 1024 * 1024)
 #define COMPRESS_MIN_AVG_VALUE_SIZE 6

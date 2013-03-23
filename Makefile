@@ -1,22 +1,35 @@
+export
+
 DISCODB_VERSION = 0.2
 DISCODB_RELEASE = 0.2
 
 prefix     = /usr/local
 
+CC         = gcc
+CFLAGS     = -O3
+REBAR      = rebar
 PYTHON     = python
-PYTHONENVS = DISCODB_VERSION=$(DISCODB_VERSION) DISCODB_RELEASE=$(DISCODB_RELEASE)
 SPHINXOPTS = "-D version=$(DISCODB_VERSION) -D release=$(DISCODB_RELEASE)"
 
-.PHONY: build clean install doc doc-clean
+ifeq ($(shell uname), Darwin)
+	CFLAGS = -O3 -fnested-functions
+endif
 
-build:
-	$(PYTHONENVS) $(PYTHON) setup.py build
+.PHONY: build clean doc doc-clean erlang python
+
+build: $(patsubst %.c,%.o,$(wildcard src/*.c))
+utils: create query
+create query: build
+	$(CC) $(CFLAGS) -Isrc -lcmph -o $@ src/util/$@.c src/*.o
+
+src/%.o: src/%.c
+	$(CC) $(CFLAGS) -Isrc -c $< -o $@
 
 clean:
-	rm -rf build
-
-install:
-	$(PYTHONENVS) $(PYTHON) setup.py install --root=$(DESTDIR)/ --prefix=$(prefix) $(PY_INSTALL_OPTS)
+	rm -rf `find . -name \*.o`
+	rm -rf create query
+	rm -rf python/build
+	rm -rf erlang/ebin erlang/priv
 
 doc:
 	(cd doc && $(MAKE) SPHINXOPTS=$(SPHINXOPTS) html)
@@ -26,3 +39,12 @@ doc-clean:
 
 doc-test:
 	(cd doc && $(MAKE) SPHINXOPTS=$(SPHINXOPTS) doctest)
+
+erlang: CMD = compile
+erlang:
+	(cd erlang && $(REBAR) $(CMD))
+
+python: CFLAGS =
+python: CMD = build
+python:
+	(cd python && $(PYTHON) setup.py $(CMD))
