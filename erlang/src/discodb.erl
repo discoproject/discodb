@@ -27,6 +27,7 @@
 -export([fold/3,
          next/1,
          size/1,
+         count/1,
          to_list/1]).
 
 %% Convenience
@@ -73,6 +74,8 @@ call(DDB, Method, Args) ->
 cons() ->
     init(discodb_cons, new, []).
 
+add(Cons, [Key, Val]) ->
+    add(Cons, {Key, Val});
 add(Cons, Item) ->
     call(Cons, add, Item).
 
@@ -91,8 +94,8 @@ new(Items) ->
     new(Items, []).
 
 new(Items, Flags) ->
-    finalize(lists:foldl(fun ({Key, Val}, Cons) ->
-                                 add(Cons, {Key, Val})
+    finalize(lists:foldl(fun (Item, Cons) ->
+                                 add(Cons, Item)
                          end, cons(), Items), Flags).
 
 load(Filename) ->
@@ -137,6 +140,9 @@ next(Iter) ->
 
 size(Iter) ->
     discodb_nif:size(Iter).
+
+count(Iter) ->
+    discodb_nif:count(Iter).
 
 to_list(Iter) ->
     lists:reverse(fold(Iter, fun (E, Acc) -> [E|Acc] end, [])).

@@ -1,7 +1,7 @@
 -module(discodb_nif).
 
 -export([init/3, call/3]).
--export([next/1, size/1]).
+-export([next/1, size/1, count/1]).
 
 -define(nif_not_loaded, erlang:nif_error({nif_not_loaded, module, ?MODULE, line, ?LINE})).
 
@@ -27,4 +27,7 @@ next(_Iter) ->
     ?nif_not_loaded.
 
 size(_Iter) ->
+    ?nif_not_loaded.
+
+count(_Iter) ->
     ?nif_not_loaded.

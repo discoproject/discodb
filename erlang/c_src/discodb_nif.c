@@ -180,6 +180,19 @@ ErlDDBIter_size(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   return enif_make_uint64(env, ddb_resultset_size(iter->cursor));
 }
 
+static ERL_NIF_TERM
+ErlDDBIter_count(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
+  ErlDDBIter *iter;
+  if (!enif_get_resource(env, argv[0], ErlDDBIterType, (void **)&iter))
+    return ERROR_BADARG;
+
+  int errcode = 0;
+  uint64_t n = ddb_cursor_count(iter->cursor, &errcode);
+  if (errcode)
+    return enif_make_tuple2(env, ATOM_ERROR, enif_make_int(env, errcode));
+  return enif_make_uint64(env, n);
+}
+
 static void
 ErlDDB_free(ErlNifEnv *env, void *res) {
   ErlDDB *ddb = (ErlDDB *)res;
@@ -545,6 +558,7 @@ static ErlNifFunc nif_funcs[] =
     {"call", 3, ErlDDB_call},
     {"next", 1, ErlDDBIter_next},
     {"size", 1, ErlDDBIter_size},
+    {"count", 1, ErlDDBIter_count},
   };
 
 static int
