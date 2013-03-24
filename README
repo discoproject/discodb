@@ -12,6 +12,5 @@ Use the Makefile to build, e.g.::
     make utils
 
 TODO:
- - remove nested functions to support clang (and asm.js?)
  - change `fscanf` in create.c, since its not cross-platform
  - ddb.flush()?

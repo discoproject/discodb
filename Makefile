@@ -5,15 +5,10 @@ DISCODB_RELEASE = 0.2
 
 prefix     = /usr/local
 
-CC         = gcc
 CFLAGS     = -O3
 REBAR      = rebar
 PYTHON     = python
 SPHINXOPTS = "-D version=$(DISCODB_VERSION) -D release=$(DISCODB_RELEASE)"
-
-ifeq ($(shell uname), Darwin)
-	CFLAGS = -O3 -fnested-functions
-endif
 
 .PHONY: build clean doc doc-clean erlang python
 

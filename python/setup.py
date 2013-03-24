@@ -1,16 +1,10 @@
-import glob, sys
+import glob
 from distutils.core import setup, Extension
-
-if sys.platform == 'darwin':
-    extra_compile_args = ['-fnested-functions']
-else:
-    extra_compile_args = []
 
 discodb_module = Extension('discodb._discodb',
                            sources=['discodbmodule.c'] + glob.glob('../src/*.c'),
                            include_dirs=['../src'],
-                           libraries=['cmph'],
-                           extra_compile_args=extra_compile_args)
+                           libraries=['cmph'])
 
 setup(name='discodb',
       version='0.2',

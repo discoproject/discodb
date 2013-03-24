@@ -7,44 +7,59 @@
 #include <ddb_map.h>
 #include <ddb_cmph.h>
 
+struct ddb_cmph_data {
+  const struct ddb_map *map;
+  struct ddb_map_cursor *cursor;
+  struct ddb_entry *key;
+  char *buf;
+  uint32_t *hash_failed;
+};
+
+void xdispose(void *data, char *key, cmph_uint32 l) {}
+void xrewind(void *data) {
+  struct ddb_cmph_data *d = (struct ddb_cmph_data *) data;
+  ddb_map_cursor_free(d->cursor);
+  d->cursor = ddb_map_cursor_new(d->map);
+}
+int xread(void *data, char **p, cmph_uint32 *len) {
+  struct ddb_cmph_data *d = (struct ddb_cmph_data *) data;
+  struct ddb_map_cursor *c = d->cursor;
+  struct ddb_entry key = *d->key;
+  char *buf = d->buf;
+  uint32_t hash_failed = *d->hash_failed, buf_len = 0;
+
+  if (c) {
+    ddb_map_next_str(c, &key);
+    if (key.length > buf_len){
+      buf_len = key.length;
+      if (!(buf = realloc(buf, buf_len)))
+        hash_failed = 1;
+    }
+  } else {
+    hash_failed = 1;
+  }
+
+  if (hash_failed){
+    *len = 0;
+    *p = NULL;
+  } else {
+    memcpy(buf, key.data, key.length);
+    *len = key.length;
+    *p = buf;
+  }
+  return *len;
+}
+
 char *ddb_build_cmph(const struct ddb_map *keys_map, uint32_t *size)
 {
     char *buf = NULL;
-    uint32_t buf_len = 0;
     uint32_t hash_failed = 0;
     struct ddb_entry key;
     struct ddb_map_cursor *c = ddb_map_cursor_new(keys_map);
-
-    void xdispose(void *data, char *key, cmph_uint32 l) { }
-    void xrewind(void *data){
-        ddb_map_cursor_free(c);
-        c = ddb_map_cursor_new(keys_map);
-    }
-    int xread(void *data, char **p, cmph_uint32 *len)
-    {
-        if (c){
-            ddb_map_next_str(c, &key);
-            if (key.length > buf_len){
-                buf_len = key.length;
-                if (!(buf = realloc(buf, buf_len)))
-                    hash_failed = 1;
-            }
-        }else
-            hash_failed = 1;
-
-        if (hash_failed){
-            *len = 0;
-            *p = NULL;
-        }else{
-            memcpy(buf, key.data, key.length);
-            *len = key.length;
-            *p = buf;
-        }
-        return *len;
-    }
+    struct ddb_cmph_data data = {.map=keys_map, .cursor=c, .key=&key, .buf=buf, .hash_failed=&hash_failed};
 
     cmph_io_adapter_t r;
-    r.data = NULL;
+    r.data = &data;
     r.nkeys = ddb_map_num_items(keys_map);
     r.read = xread;
     r.dispose = xdispose;
