@@ -150,15 +150,10 @@ static ERL_NIF_TERM
 ErlDDBIter_new(ErlNifEnv *env, ErlDDB *owner, struct ddb_cursor *cursor) {
   ErlDDBIter *iter;
   if (!(iter = enif_alloc_resource(ErlDDBIterType, sizeof(ErlDDBIter))))
-    goto error;
+    return ERROR_ECREAT;
   enif_keep_resource(iter->owner = owner);
   iter->cursor = cursor;
   return make_reference(env, iter);
-
- error:
-  if (iter)
-    enif_release_resource(iter);
-  return ERROR_ECREAT;
 }
 
 static ERL_NIF_TERM

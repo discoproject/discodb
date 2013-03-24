@@ -2,7 +2,7 @@
 :mod:`discodb.query` -- Supporting objects for the DiscoDB query interface
 ==========================================================================
 
->>> from .discodb import Q
+>>> from discodb import Q
 >>> Q.parse('~(B | C)') == Q.parse('~B & ~C')
 True
 >>> Q.parse('(A & B) | C') == Q.parse('(A | C) & (B | C)')
@@ -14,7 +14,7 @@ True
 >>> Q.urlscan(Q.parse('(a | b) & ~c').urlformat()) == Q.parse('~c & (a | b)')
 True
 
->>> from .discodb import DiscoDB
+>>> from discodb import DiscoDB
 >>> discodb = DiscoDB({'A': ['B', 'C'], 'B': 'D', 'C': 'E', 'D': 'F', 'E': 'G'})
 >>> sorted(discodb.query(Q.parse('A')))
 ['B', 'C']

@@ -120,7 +120,7 @@ unique_values(DB) ->
     call(DB, iter, unique_values).
 
 query(DB, Q) ->
-    call(DB, query, Q). %% XXX
+    call(DB, query, Q).
 
 %% DiscoDBIter
 
