@@ -444,7 +444,7 @@ void ddb_cons_free(struct ddb_cons *cons)
         return;
 
     while (ddb_map_next_item_str(c, &key, &ptr))
-        free((void*)*ptr);
+        ddb_deltalist_free((struct ddb_deltalist*)*ptr);
 
     ddb_map_cursor_free(c);
     ddb_map_free(cons->keys_map);
