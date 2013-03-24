@@ -39,7 +39,6 @@ erlang: CMD = compile
 erlang:
 	(cd erlang && $(REBAR) $(CMD))
 
-python: CFLAGS =
 python: CMD = build
 python:
 	(cd python && $(PYTHON) setup.py $(CMD))

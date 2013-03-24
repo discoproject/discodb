@@ -55,8 +55,11 @@ char *ddb_build_cmph(const struct ddb_map *keys_map, uint32_t *size)
     char *buf = NULL;
     uint32_t hash_failed = 0;
     struct ddb_entry key;
-    struct ddb_map_cursor *c = ddb_map_cursor_new(keys_map);
-    struct ddb_cmph_data data = {.map=keys_map, .cursor=c, .key=&key, .buf=buf, .hash_failed=&hash_failed};
+    struct ddb_cmph_data data = {.map=keys_map,
+                                 .cursor=ddb_map_cursor_new(keys_map),
+                                 .key=&key,
+                                 .buf=buf,
+                                 .hash_failed=&hash_failed};
 
     cmph_io_adapter_t r;
     r.data = &data;
@@ -81,7 +84,7 @@ char *ddb_build_cmph(const struct ddb_map *keys_map, uint32_t *size)
     }
     if (g)
         cmph_destroy(g);
-    ddb_map_cursor_free(c);
+    ddb_map_cursor_free(data.cursor);
     cmph_config_destroy(cmph);
     free(buf);
     return hash;
