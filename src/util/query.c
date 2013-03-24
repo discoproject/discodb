@@ -104,13 +104,13 @@ static struct ddb *open_discodb(const char *file)
 
 #define FEAT(x) (long long unsigned int)feat[x]
 
+static const char yes[] = "true";
+static const char no[] = "false";
+const char *boolstr(int boolean) { return boolean ? yes: no; }
+
 static void print_info(struct ddb *db)
 {
-    static const char yes[] = "true";
-    static const char no[] = "false";
-    const char *boolstr(int boolean) { return boolean ? yes: no; }
     ddb_features_t feat;
-
     ddb_features(db, feat);
     printf("Total size:              %llu bytes\n", FEAT(DDB_TOTAL_SIZE));
     printf("Items size:              %llu bytes\n", FEAT(DDB_ITEMS_SIZE));

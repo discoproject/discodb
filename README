@@ -10,7 +10,3 @@ Use the Makefile to build, e.g.::
     make python
     make python CMD=install
     make utils
-
-TODO:
- - change `fscanf` in create.c, since its not cross-platform
- - ddb.flush()?
