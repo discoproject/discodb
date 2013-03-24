@@ -1,0 +1,50 @@
+#!/usr/bin/env escript
+%% -*- erlang -*-
+%%! -pa erlang/ebin
+
+str(Int) ->
+    integer_to_list(Int).
+
+kvs(File) ->
+    case file:read_file(File) of
+        {ok, Data} ->
+            [binary:split(L, <<"\t">>, [global]) || L <- binary:split(Data, <<"\n">>, [global, trim])]
+    end.
+
+main(["create", DB, File]) ->
+    discodb:dump(DB, discodb:new(kvs(File), [unique_items]));
+
+main(["get", DB, Key]) ->
+    fold(discodb:get(discodb:load(DB), Key));
+main(["keys", DB]) ->
+    fold(discodb:keys(discodb:load(DB)));
+main(["values", DB]) ->
+    fold(discodb:keys(discodb:load(DB)));
+main(["unique_values", DB]) ->
+    fold(discodb:keys(discodb:load(DB)));
+main(["query", DB|Query]) ->
+    fold(discodb:query(discodb:load(DB), [Query]));
+
+main([File]) ->
+    spawn_link(fun () -> heart() end),
+    loop(kvs(File));
+
+main([]) ->
+    spawn_link(fun () -> heart() end),
+    loop([{str(N), str(N)} || N <- lists:seq(1, 26)]).
+
+fold(Iter) ->
+    discodb:fold(Iter, fun (E, _) -> io:fwrite("~s~n", [E]) end, []).
+
+loop(KVs) ->
+    D = discodb:new(KVs, [unique_items]),
+    N = discodb:size(discodb:keys(D)),
+    case length(discodb:list(discodb:keys(discodb:loads(discodb:dumps(D))))) of
+        N ->
+            ok
+    end,
+    loop(KVs).
+
+heart() ->
+    io:format("beat~n"),
+    receive after 3000 -> heart() end.
