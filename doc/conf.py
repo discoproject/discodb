@@ -16,10 +16,18 @@ import sys, os
 # If your extensions are in another directory, add it here. If the directory
 # is relative to the documentation root, use os.path.abspath to make it
 # absolute, like shown here.
-sys.path.insert(0, os.path.abspath('../bin'))
+sys.path.insert(0, os.path.abspath('../src'))
+
+# Python 3.3 has mock; use it.
+try: import mock
+except ImportError:
+    sys.path.insert(0, os.path.abspath('.'))
+    import mock
 
 # General configuration
 # ---------------------
+
+on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
@@ -38,13 +46,18 @@ master_doc = 'index'
 project = 'DiscoDB'
 copyright = '2008-2012, Nokia Corporation and the Disco Project'
 
+if on_rtd:
+    MOCK_MODULES = ['discodb._discodb']
+    for mod_name in MOCK_MODULES:
+        sys.modules[mod_name] = mock.Mock()
+else:
 # The default replacements for |version| and |release|, also used in various
 # other places throughout the built documents.
 #
 # The short X.Y version.
-version = '%DISCODB_VERSION%'
+    version = '%DISCODB_VERSION%'
 # The full version, including alpha/beta/rc tags.
-release = '%DISCODB_RELEASE%'
+    release = '%DISCODB_RELEASE%'
 
 # There are two options for replacing |today|: either, you set today to some
 # non-false value, then it is used:
