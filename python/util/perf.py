@@ -24,6 +24,7 @@ def test_cons_leak():
         c = DiscoDBConstructor()
         for l in 'abcdefghijklmnopqrstuvwxyz':
             c.add(l, l)
+        c.finalize()
 
 def len_all(d):
     for k in d.keys():

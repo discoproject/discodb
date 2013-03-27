@@ -193,21 +193,18 @@ static int
 DiscoDB_contains(register DiscoDB *self, register PyObject *key)
 {
     PyObject *pack = NULL;
-    struct ddb_entry *kentry = ddb_entry_alloc(1);
     struct ddb_cursor *cursor = NULL;
+    struct ddb_entry kentry;
     int isfound = 1;
-
-    if (kentry == NULL)
-        goto Done;
 
     pack = Py_BuildValue("(O)", key);
     if (pack == NULL)
         goto Done;
 
-    if (!PyArg_ParseTuple(pack, "s#", &kentry->data, &kentry->length))
+    if (!PyArg_ParseTuple(pack, "s#", &kentry.data, &kentry.length))
         goto Done;
 
-    cursor = ddb_getitem(self->discodb, kentry);
+    cursor = ddb_getitem(self->discodb, &kentry);
     if (cursor == NULL)
         if (ddb_has_error(self->discodb))
             goto Done;
@@ -217,7 +214,6 @@ DiscoDB_contains(register DiscoDB *self, register PyObject *key)
 
  Done:
     Py_CLEAR(pack);
-    DiscoDB_CLEAR(kentry);
     ddb_cursor_dealloc(cursor);
 
     if (PyErr_Occurred())
@@ -229,20 +225,17 @@ static PyObject *
 DiscoDB_getitem(register DiscoDB *self, register PyObject *key)
 {
     PyObject *pack = NULL;
-    struct ddb_entry *kentry = ddb_entry_alloc(1);
     struct ddb_cursor *cursor = NULL;
-
-    if (kentry == NULL)
-        goto Done;
+    struct ddb_entry kentry;
 
     pack = Py_BuildValue("(O)", key);
     if (pack == NULL)
         goto Done;
 
-    if (!PyArg_ParseTuple(pack, "s#", &kentry->data, &kentry->length))
+    if (!PyArg_ParseTuple(pack, "s#", &kentry.data, &kentry.length))
         goto Done;
 
-    cursor = ddb_getitem(self->discodb, kentry);
+    cursor = ddb_getitem(self->discodb, &kentry);
     if (cursor == NULL)
         if (ddb_has_error(self->discodb))
             goto Done;
@@ -252,7 +245,6 @@ DiscoDB_getitem(register DiscoDB *self, register PyObject *key)
 
  Done:
     Py_CLEAR(pack);
-    DiscoDB_CLEAR(kentry);
 
     if (PyErr_Occurred())
         return NULL;
@@ -662,16 +654,10 @@ DiscoDBConstructor_add(DiscoDBConstructor *self, PyObject *item)
         *values = NULL,
         *valueseq = NULL,
         *vpack = NULL;
-    struct ddb_entry
-        *kentry = NULL,
-        *ventry = NULL;
     uint64_t n;
+    struct ddb_entry kentry, ventry;
 
-    kentry = ddb_entry_alloc(1);
-    if (kentry == NULL)
-      goto Done;
-
-    if (!PyArg_ParseTuple(item, "s#O", &kentry->data, &kentry->length, &values))
+    if (!PyArg_ParseTuple(item, "s#O", &kentry.data, &kentry.length, &values))
       goto Done;
 
     Py_XINCREF(values);
@@ -692,29 +678,24 @@ DiscoDBConstructor_add(DiscoDBConstructor *self, PyObject *item)
       goto Done;
 
     for (n = 0; (value = PyIter_Next(itervalues)); n++) {
-      ventry = ddb_entry_alloc(1);
-      if (ventry == NULL)
-        goto Done;
-
       vpack = Py_BuildValue("(O)", value);
       if (vpack == NULL)
         goto Done;
 
-      if (!PyArg_ParseTuple(vpack, "s#", &ventry->data, &ventry->length))
+      if (!PyArg_ParseTuple(vpack, "s#", &ventry.data, &ventry.length))
         goto Done;
 
-      if (ddb_cons_add(self->ddb_cons, kentry, ventry)) {
+      if (ddb_cons_add(self->ddb_cons, &kentry, &ventry)) {
         PyErr_SetString(DiscoDBError, "Construction failed");
         goto Done;
       }
 
       Py_CLEAR(value);
       Py_CLEAR(vpack);
-      DiscoDB_CLEAR(ventry);
     }
 
     if (n == 0)
-      if (ddb_cons_add(self->ddb_cons, kentry, NULL)) {
+      if (ddb_cons_add(self->ddb_cons, &kentry, NULL)) {
         PyErr_SetString(DiscoDBError, "Construction failed");
         goto Done;
       }
@@ -725,8 +706,6 @@ DiscoDBConstructor_add(DiscoDBConstructor *self, PyObject *item)
     Py_CLEAR(values);
     Py_CLEAR(valueseq);
     Py_CLEAR(vpack);
-    DiscoDB_CLEAR(kentry);
-    DiscoDB_CLEAR(ventry);
 
     if (PyErr_Occurred())
       return NULL;
@@ -895,15 +874,6 @@ ddb_cons_alloc(void)
     if (!cons)
         PyErr_NoMemory();
     return cons;
-}
-
-static struct ddb_entry *
-ddb_entry_alloc(size_t count)
-{
-    struct ddb_entry *entry = (struct ddb_entry *)calloc(count, sizeof(struct ddb_entry));
-    if (!entry)
-        PyErr_NoMemory();
-    return entry;
 }
 
 static struct ddb_query_clause *
