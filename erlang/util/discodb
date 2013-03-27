@@ -26,11 +26,13 @@ main(["query", DB|Query]) ->
     fold(discodb:query(discodb:load(DB), [Query]));
 
 main([File]) ->
-    spawn_link(fun () -> heart() end),
+    Me = self(),
+    spawn_link(fun () -> heart(Me) end),
     loop(kvs(File));
 
 main([]) ->
-    spawn_link(fun () -> heart() end),
+    Me = self(),
+    spawn_link(fun () -> heart(Me) end),
     loop([{str(N), str(N)} || N <- lists:seq(1, 26)]).
 
 fold(Iter) ->
@@ -45,6 +47,7 @@ loop(KVs) ->
     end,
     loop(KVs).
 
-heart() ->
-    io:format("beat~n"),
-    receive after 3000 -> heart() end.
+heart(Pid) ->
+    io:format("beat ~p~n", [process_info(Pid, message_queue_len)]),
+    Pid ! {annoying, messages},
+    receive after 3000 -> heart(Pid) end.

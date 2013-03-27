@@ -44,15 +44,21 @@ str(Bin) when is_binary(Bin) ->
 str(Str) when is_list(Str) ->
     Str.
 
+wait(DDB) ->
+    receive
+        {discodb, ok} ->
+            DDB;
+        {discodb, Reply} ->
+            Reply;
+        Else ->
+            self() ! Else,
+            wait(DDB)
+    end.
+
 init(Type, Func, Args) ->
     case discodb_nif:init(Type, Func, Args) of
         DDB when is_binary(DDB) ->
-            receive
-                ok ->
-                    DDB;
-                Reply ->
-                    Reply
-            end;
+            wait(DDB);
         Error ->
             Error
     end.
@@ -60,12 +66,7 @@ init(Type, Func, Args) ->
 call(DDB, Method, Args) ->
     case discodb_nif:call(DDB, Method, Args) of
         DDB ->
-            receive
-                ok ->
-                    DDB;
-                Reply ->
-                    Reply
-            end;
+            wait(DDB);
         Error ->
             Error
     end.

@@ -11,6 +11,7 @@
 #define ATOM(Val) (enif_make_atom(env, Val))
 #define PAIR(A, B) (enif_make_tuple2(env, A, B))
 #define TERM_EQ(lhs, rhs) (enif_compare(lhs, rhs) == 0)
+#define ASYNC(R) (PAIR(ATOM_DISCODB, R))
 
 #define ATOM_OK                  ATOM("ok")
 #define ATOM_BADARG              ATOM("badarg")
@@ -255,8 +256,8 @@ static ERL_NIF_TERM
 ErlDiscoDBCons_new_async(ErlDDB *ddb, Message *msg) {
   ErlNifEnv *env = msg->env;
   if (!(ddb->cons = ddb_cons_new()))
-    return ERROR_ECREAT;
-  return ATOM_OK;
+    return ASYNC(ERROR_ECREAT);
+  return ASYNC(ATOM_OK);
 }
 
 static ERL_NIF_TERM
@@ -266,16 +267,16 @@ ErlDiscoDBCons_add_async(ErlDDB *ddb, Message *msg) {
   const ERL_NIF_TERM *args;
   ErlNifBinary key, val;
   if (!enif_get_tuple(env, msg->term, &arity, &args) || arity != 2)
-    return ERROR_BADARG;
+    return ASYNC(ERROR_BADARG);
   if (!enif_inspect_iolist_as_binary(env, args[0], &key))
-    return ERROR_BADARG;
+    return ASYNC(ERROR_BADARG);
   if (!enif_inspect_iolist_as_binary(env, args[1], &val))
-    return ERROR_BADARG;
+    return ASYNC(ERROR_BADARG);
   if (ddb_cons_add(ddb->cons,
                    &(struct ddb_entry){.data=(char *)key.data, .length=key.size},
                    &(struct ddb_entry){.data=(char *)val.data, .length=val.size}))
-    return make_ddb_error(env, ddb);
-  return ATOM_OK;
+    return ASYNC(make_ddb_error(env, ddb));
+  return ASYNC(ATOM_OK);
 }
 
 static int
@@ -296,24 +297,24 @@ ErlDiscoDBCons_finalize_async(ErlDDB *ddb, Message *msg) {
   ERL_NIF_TERM head, opts = msg->term;
 
   if (!enif_is_list(env, opts))
-    return ERROR_BADARG;
+    return ASYNC(ERROR_BADARG);
   while (enif_get_list_cell(env, opts, &head, &opts)) {
     if ((flag = ErlDDB_flag(env, head)) >= 0)
       flags |= flag;
     else
-      return ERROR_BADARG;
+      return ASYNC(ERROR_BADARG);
   }
 
   if (!(new = ErlDDB_start(env)))
-    return ERROR_ECREAT;
+    return ASYNC(ERROR_ECREAT);
   new->kind = KIND_DB;
   if (!(new->buf = ddb_cons_finalize(ddb->cons, &n, flags)))
-    return ERROR_EALLOC;
+    return ASYNC(ERROR_EALLOC);
   if (!(new->db = ddb_new()))
-    return ERROR_EALLOC;
+    return ASYNC(ERROR_EALLOC);
   if (ddb_loads(new->db, new->buf, n))
-    return make_ddb_error(env, new);
-  return make_reference(env, new);
+    return ASYNC(make_ddb_error(env, new));
+  return ASYNC(make_reference(env, new));
 }
 
 static ERL_NIF_TERM
@@ -321,22 +322,22 @@ ErlDiscoDB_load_async(ErlDDB *ddb, Message *msg) {
   ErlNifEnv *env = msg->env;
   unsigned size;
   if (!(ddb->db = ddb_new()))
-    return ERROR_EALLOC;
+    return ASYNC(ERROR_EALLOC);
   if (enif_get_list_length(env, msg->term, &size)) {
     char name[size + 1];
     if (!enif_get_string(env, msg->term, name, size + 1, ERL_NIF_LATIN1))
-      return ERROR_BADARG;
+      return ASYNC(ERROR_BADARG);
     int fd = open(name, O_RDONLY);
     if (fd < 0)
-      return enif_make_tuple2(env, ATOM_ERROR, enif_make_atom(env, errno_id(errno)));
+      return ASYNC(enif_make_tuple2(env, ATOM_ERROR, enif_make_atom(env, errno_id(errno))));
     if (ddb_load(ddb->db, fd)) { // XXX: offset? always take a tuple, default in erl
       close(fd);
-      return make_ddb_error(env, ddb);
+      return ASYNC(make_ddb_error(env, ddb));
     }
     close(fd);
-    return ATOM_OK;
+    return ASYNC(ATOM_OK);
   }
-  return ERROR_BADARG;
+  return ASYNC(ERROR_BADARG);
 }
 
 static ERL_NIF_TERM
@@ -344,14 +345,14 @@ ErlDiscoDB_loads_async(ErlDDB *ddb, Message *msg) {
   ErlNifEnv *env = msg->env;
   ErlNifBinary bin;
   if (!(ddb->db = ddb_new()))
-    return ERROR_EALLOC;
+    return ASYNC(ERROR_EALLOC);
   if (!enif_inspect_iolist_as_binary(env, msg->term, &bin))
-    return ERROR_BADARG;
+    return ASYNC(ERROR_BADARG);
   if (!(ddb->buf = malloc(sizeof(char) * bin.size)))
-    return ERROR_EALLOC;
+    return ASYNC(ERROR_EALLOC);
   if (ddb_loads(ddb->db, memcpy(ddb->buf, bin.data, bin.size), bin.size))
-    return make_ddb_error(env, ddb);
-  return ATOM_OK;
+    return ASYNC(make_ddb_error(env, ddb));
+  return ASYNC(ATOM_OK);
 }
 
 static ERL_NIF_TERM
@@ -361,18 +362,18 @@ ErlDiscoDB_dump_async(ErlDDB *ddb, Message *msg) {
   if (enif_get_list_length(env, msg->term, &size)) {
     char name[size + 1];
     if (!enif_get_string(env, msg->term, name, size + 1, ERL_NIF_LATIN1))
-      return ERROR_BADARG;
+      return ASYNC(ERROR_BADARG);
     int fd = open(name, O_WRONLY | O_CREAT, 0644);
     if (fd < 0)
-      return enif_make_tuple2(env, ATOM_ERROR, enif_make_atom(env, errno_id(errno)));
+      return ASYNC(enif_make_tuple2(env, ATOM_ERROR, enif_make_atom(env, errno_id(errno))));
     if (ddb_dump(ddb->db, fd)) {
       close(fd);
-      return make_ddb_error(env, ddb);
+      return ASYNC(make_ddb_error(env, ddb));
     }
     close(fd);
-    return ATOM_OK;
+    return ASYNC(ATOM_OK);
   }
-  return ERROR_BADARG;
+  return ASYNC(ERROR_BADARG);
 }
 
 static ERL_NIF_TERM
@@ -381,16 +382,16 @@ ErlDiscoDB_dumps_async(ErlDDB *ddb, Message *msg) {
   uint64_t size;
   char *src;
   if (!(src = ddb_dumps(ddb->db, &size)))
-    return make_ddb_error(env, ddb);
+    return ASYNC(make_ddb_error(env, ddb));
 
   ErlNifBinary bin;
   if (!(enif_alloc_binary(size, &bin))) {
     free(src);
-    return ERROR_EALLOC;
+    return ASYNC(ERROR_EALLOC);
   }
   memcpy(bin.data, src, bin.size);
   free(src);
-  return enif_make_binary(env, &bin);
+  return ASYNC(enif_make_binary(env, &bin));
 }
 
 static ERL_NIF_TERM
@@ -398,12 +399,12 @@ ErlDiscoDB_get_async(ErlDDB *ddb, Message *msg) {
   ErlNifEnv *env = msg->env;
   ErlNifBinary key;
   if (!enif_inspect_iolist_as_binary(env, msg->term, &key))
-    return ERROR_BADARG;
+    return ASYNC(ERROR_BADARG);
 
   struct ddb_cursor *cursor = NULL;
   if (!(cursor = ddb_getitem(ddb->db, &(struct ddb_entry) {.data=(char *)key.data, .length=key.size})))
-    return make_ddb_error(env, ddb);
-  return ErlDDBIter_new(env, ddb, cursor);
+    return ASYNC(make_ddb_error(env, ddb));
+  return ASYNC(ErlDDBIter_new(env, ddb, cursor));
 }
 
 static ERL_NIF_TERM
@@ -417,11 +418,11 @@ ErlDiscoDB_iter_async(ErlDDB *ddb, Message *msg) {
   else if (TERM_EQ(msg->term, ATOM_UNIQUE_VALUES))
     cursor = ddb_unique_values(ddb->db);
   else
-    return ERROR_BADARG;
+    return ASYNC(ERROR_BADARG);
 
   if (cursor == NULL)
-    return make_ddb_error(env, ddb);
-  return ErlDDBIter_new(env, ddb, cursor);
+    return ASYNC(make_ddb_error(env, ddb));
+  return ASYNC(ErlDDBIter_new(env, ddb, cursor));
 }
 
 static void
@@ -474,16 +475,16 @@ ErlDiscoDB_query_async(ErlDDB *ddb, Message *msg) {
   if (!(cursor = ddb_query(ddb->db, ddb_clauses, nclauses)))
     goto equery;
   free_ddb_query_clauses(ddb_clauses, nclauses);
-  return ErlDDBIter_new(env, ddb, cursor);
+  return ASYNC(ErlDDBIter_new(env, ddb, cursor));
  badarg:
   free_ddb_query_clauses(ddb_clauses, nclauses);
-  return ERROR_BADARG;
+  return ASYNC(ERROR_BADARG);
  ecreat:
   free_ddb_query_clauses(ddb_clauses, nclauses);
-  return ERROR_ECREAT;
+  return ASYNC(ERROR_ECREAT);
  equery:
   free_ddb_query_clauses(ddb_clauses, nclauses);
-  return make_ddb_error(env, ddb);
+  return ASYNC(make_ddb_error(env, ddb));
 }
 
 static ERL_NIF_TERM
