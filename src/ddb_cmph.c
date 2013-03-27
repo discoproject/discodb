@@ -25,14 +25,13 @@ int xread(void *data, char **p, cmph_uint32 *len) {
   struct ddb_cmph_data *d = (struct ddb_cmph_data *) data;
   struct ddb_map_cursor *c = d->cursor;
   struct ddb_entry key = *d->key;
-  char *buf = d->buf;
   uint32_t hash_failed = *d->hash_failed, buf_len = 0;
 
   if (c) {
     ddb_map_next_str(c, &key);
     if (key.length > buf_len){
       buf_len = key.length;
-      if (!(buf = realloc(buf, buf_len)))
+      if (!(d->buf = realloc(d->buf, buf_len)))
         hash_failed = 1;
     }
   } else {
@@ -43,9 +42,9 @@ int xread(void *data, char **p, cmph_uint32 *len) {
     *len = 0;
     *p = NULL;
   } else {
-    memcpy(buf, key.data, key.length);
+    memcpy(d->buf, key.data, key.length);
     *len = key.length;
-    *p = buf;
+    *p = d->buf;
   }
   return *len;
 }
