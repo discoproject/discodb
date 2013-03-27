@@ -20,6 +20,7 @@
          keys/1,
          values/1,
          unique_values/1,
+         q/2,
          query/2]).
 
 %% DiscoDBIter
@@ -121,6 +122,9 @@ values(DB) ->
 
 unique_values(DB) ->
     call(DB, iter, unique_values).
+
+q(DB, Q) ->
+    query(DB, Q).
 
 query(DB, Q) ->
     call(DB, query, Q).

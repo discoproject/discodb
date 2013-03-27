@@ -22,7 +22,7 @@ src/%.o: src/%.c
 
 clean:
 	rm -rf `find . -name \*.o`
-	rm -rf create query
+	rm -rf create query *.dSYM
 	rm -rf python/build
 	rm -rf erlang/ebin erlang/priv
 
