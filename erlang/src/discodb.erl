@@ -32,7 +32,8 @@
          to_list/1]).
 
 %% Convenience
--export([list/1,
+-export([each/3,
+         list/1,
          list/3,
          peek/1,
          peek/2,
@@ -153,6 +154,15 @@ to_list(Iter) ->
     lists:reverse(fold(Iter, fun (E, Acc) -> [E|Acc] end, [])).
 
 %% Convenience
+
+each(DB, Fun, Acc) ->
+    fold(keys(DB),
+         fun (K, A) ->
+                 fold(get(DB, K),
+                      fun (V, B) ->
+                              Fun({K, V}, B)
+                      end, A)
+         end, Acc).
 
 list(Iter) ->
     to_list(Iter).
