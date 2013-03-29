@@ -51,13 +51,12 @@ int xread(void *data, char **p, cmph_uint32 *len) {
 
 char *ddb_build_cmph(const struct ddb_map *keys_map, uint32_t *size)
 {
-    char *buf = NULL;
     uint32_t hash_failed = 0;
     struct ddb_entry key;
     struct ddb_cmph_data data = {.map=keys_map,
                                  .cursor=ddb_map_cursor_new(keys_map),
                                  .key=&key,
-                                 .buf=buf,
+                                 .buf=NULL,
                                  .hash_failed=&hash_failed};
 
     cmph_io_adapter_t r;
@@ -85,6 +84,6 @@ char *ddb_build_cmph(const struct ddb_map *keys_map, uint32_t *size)
         cmph_destroy(g);
     ddb_map_cursor_free(data.cursor);
     cmph_config_destroy(cmph);
-    free(buf);
+    free(data.buf);
     return hash;
 }

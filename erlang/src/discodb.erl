@@ -66,7 +66,7 @@ init(Type, Func, Args) ->
 
 call(DDB, Method, Args) ->
     case discodb_nif:call(DDB, Method, Args) of
-        DDB ->
+        DDB when is_binary(DDB) ->
             wait(DDB);
         Error ->
             Error
