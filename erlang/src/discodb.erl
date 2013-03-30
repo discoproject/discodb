@@ -79,7 +79,7 @@ cons() ->
     init(discodb_cons, new, []).
 
 cons(DB) ->
-    discodb:each(DB, fun (I, C) -> discodb:add(C, I) end, discodb:cons()).
+    init(discodb_cons, ddb, DB).
 
 add(Cons, [Key, Val]) ->
     add(Cons, {Key, Val});

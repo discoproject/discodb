@@ -40,8 +40,13 @@ fold(Iter) ->
 
 loop(KVs) ->
     D = discodb:new(KVs, [unique_items]),
+    E = discodb:finalize(discodb:add(discodb:cons(D), hd(KVs)), [unique_items]),
     N = discodb:size(discodb:keys(D)),
     case length(discodb:list(discodb:keys(discodb:loads(discodb:dumps(D))))) of
+        N ->
+            ok
+    end,
+    case discodb:size(discodb:keys(E)) of
         N ->
             ok
     end,

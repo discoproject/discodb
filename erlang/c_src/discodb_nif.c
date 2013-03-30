@@ -23,6 +23,7 @@
 
 #define ATOM_DISCODB_CONS        ATOM("discodb_cons")
 #define ATOM_NEW                 ATOM("new")
+#define ATOM_DDB                 ATOM("ddb")
 #define ATOM_ADD                 ATOM("add")
 #define ATOM_FINALIZE            ATOM("finalize")
 
@@ -260,6 +261,17 @@ ErlDiscoDBCons_new_async(ErlDDB *ddb, Message *msg) {
   ErlNifEnv *env = msg->env;
   if (!(ddb->cons = ddb_cons_new()))
     return ASYNC(ERROR_ECREAT);
+  return ASYNC(ATOM_OK);
+}
+
+static ERL_NIF_TERM
+ErlDiscoDBCons_ddb_async(ErlDDB *ddb, Message *msg) {
+  ErlNifEnv *env = msg->env;
+  ErlDDB *odb;
+  if (!enif_get_resource(env, msg->term, ErlDDBType, (void **)&odb) || odb->kind != KIND_DB)
+    return ASYNC(ERROR_BADARG);
+  if (!(ddb->cons = ddb_cons_ddb(odb->db)))
+    return ASYNC(make_ddb_error(env, ddb));
   return ASYNC(ATOM_OK);
 }
 
@@ -506,6 +518,8 @@ ErlDDB_init(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   if (ddb->kind == KIND_CONS) {
     if (TERM_EQ(argv[1], ATOM_NEW))
       queue_push(ddb->msgs, Message_new(env, &ErlDiscoDBCons_new_async, argv[2]));
+    else if (TERM_EQ(argv[1], ATOM_DDB))
+      queue_push(ddb->msgs, Message_new(env, &ErlDiscoDBCons_ddb_async, argv[2]));
     else
       goto badarg;
   } else if (ddb->kind == KIND_DB) {

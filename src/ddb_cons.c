@@ -432,6 +432,46 @@ struct ddb_cons *ddb_cons_new()
     return db;
 }
 
+struct ddb_cons *ddb_cons_ddb(struct ddb *db)
+{
+  struct ddb_cons *cons;
+  struct ddb_cursor *keys = NULL, *vals = NULL;
+  const struct ddb_entry *k, *v;
+  int errno = 0;
+
+  if (!(cons = ddb_cons_new()))
+    goto error;
+
+  if (!(keys = ddb_keys(db)))
+    goto error;
+
+  while ((k = ddb_next(keys, &errno))) {
+    if (!(vals = ddb_getitem(db, k)))
+        goto error;
+    while ((v = ddb_next(vals, &errno)))
+      if (ddb_cons_add(cons, k, v))
+        goto error;
+    if (errno)
+      goto error;
+    ddb_free_cursor(vals);
+  }
+
+  if (errno)
+    goto error;
+
+  ddb_free_cursor(keys);
+  return cons;
+
+ error:
+  if (cons)
+    ddb_cons_free(cons);
+  if (keys)
+    ddb_free_cursor(keys);
+  if (vals)
+    ddb_free_cursor(vals);
+  return NULL;
+}
+
 void ddb_cons_free(struct ddb_cons *cons)
 {
     struct ddb_map_cursor *c;
