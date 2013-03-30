@@ -170,7 +170,10 @@ ErlDDBIter_next(ErlNifEnv *env, int argc, const ERL_NIF_TERM argv[]) {
   if (next == NULL)
     return ATOM_NULL;
 
-  return enif_make_resource_binary(env, iter->owner, next->data, next->length);
+  ERL_NIF_TERM result;
+  unsigned char *data = enif_make_new_binary(env, next->length, &result);
+  memcpy(data, next->data, next->length);
+  return result;
 }
 
 static ERL_NIF_TERM
