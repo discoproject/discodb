@@ -296,11 +296,9 @@ DiscoDB_query(register DiscoDB *self, PyObject *query_)
         *pack = NULL,
         *term = NULL,
         *query = NULL;
+    Py_ssize_t i = 0, j = 0;
     struct ddb_query_clause *ddb_clauses = NULL;
     struct ddb_cursor *cursor = NULL;
-    uint32_t
-        i = 0,
-        j = 0;
 
     query = PyObject_CallMethod(query_, "resolve", "O", self);
     if (query == NULL)

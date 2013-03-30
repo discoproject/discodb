@@ -3,6 +3,7 @@
 %% DiscoDBCons
 
 -export([cons/0,
+         cons/1,
          add/2,
          add/3,
          finalize/1,
@@ -76,6 +77,9 @@ call(DDB, Method, Args) ->
 
 cons() ->
     init(discodb_cons, new, []).
+
+cons(DB) ->
+    discodb:each(DB, fun (I, C) -> discodb:add(C, I) end, discodb:cons()).
 
 add(Cons, [Key, Val]) ->
     add(Cons, {Key, Val});
