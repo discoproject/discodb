@@ -147,7 +147,7 @@ err:
     return freqs;
 }
 
-int cmp(const void *p1, const void *p2)
+int compare(const void *p1, const void *p2)
 {
   const struct sortpair *x = (const struct sortpair*)p1;
   const struct sortpair *y = (const struct sortpair*)p2;
@@ -179,7 +179,7 @@ static int sort_symbols(const struct ddb_map *freqs,
         pairs[i++].freq = *freq;
         *totalfreq += *freq;
     }
-    qsort(pairs, num_symbols, sizeof(struct sortpair), cmp);
+    qsort(pairs, num_symbols, sizeof(struct sortpair), compare);
 
     num_symbols = ret = MIN(DDB_CODEBOOK_SIZE, num_symbols);
     for (i = 0; i < num_symbols; i++){
