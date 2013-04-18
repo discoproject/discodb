@@ -121,10 +121,7 @@ static struct ddb_view *load_view(const char *file, struct ddb *db)
         ++i;
         ++n;
     }
-    while (1){
-        view = ddb_create_view(db, entries, n);
-        ddb_free_view(view);
-    }
+    view = ddb_create_view(db, entries, n);
     free(entries);
     return view;
 }
