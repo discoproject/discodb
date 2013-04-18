@@ -75,6 +75,11 @@ struct ddb_values_cursor{
 
 #define WINDOW_SIZE_BYTES (WINDOW_SIZE >> 3)
 
+struct ddb_view{
+    uint32_t num_values;
+    valueid_t values[0];
+};
+
 struct ddb_cnf_term{
     struct ddb_cursor *cursor;
     valueid_t (*next)(struct ddb_cnf_term*);

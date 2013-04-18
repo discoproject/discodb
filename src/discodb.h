@@ -21,6 +21,7 @@
 #define DDB_OPT_DISABLE_COMPRESSION 1
 #define DDB_OPT_UNIQUE_ITEMS 2
 
+struct ddb_view;
 struct ddb_cons;
 struct ddb;
 struct ddb_cursor;
@@ -88,6 +89,16 @@ int ddb_notfound(const struct ddb_cursor *c);
 const struct ddb_entry *ddb_next(struct ddb_cursor *cur, int *errcode);
 uint64_t ddb_resultset_size(const struct ddb_cursor *cur);
 uint64_t ddb_cursor_count(struct ddb_cursor *c, int *err);
+
+struct ddb_view *ddb_create_view(struct ddb *db,
+                                 const struct ddb_entry *values,
+                                 uint32_t num_values);
+int ddb_free_view(struct ddb_view *filter);
+struct ddb_cursor *ddb_query_view(struct ddb *db,
+                                  const struct ddb_query_clause *clauses,
+                                  uint32_t num_clauses,
+                                  const struct ddb_view *view);
+uint32_t ddb_view_size(const struct ddb_view *view);
 
 
 

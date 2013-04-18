@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
 
 #include <discodb.h>
 
@@ -78,6 +80,53 @@ static struct ddb_query_clause *parse_cnf(char **tokens, int num, int *num_claus
         }
 #endif
         return clauses;
+}
+
+static struct ddb_view *load_view(const char *file, struct ddb *db)
+{
+    int fd, i, n;
+    struct stat nfo;
+    char *p;
+    struct ddb_entry *entries;
+    struct ddb_view *view;
+
+    if ((fd = open(file, O_RDONLY)) == -1)
+        return NULL;
+
+    if (fstat(fd, &nfo))
+        return NULL;
+
+    if (!(p = mmap(0, nfo.st_size, PROT_READ, MAP_SHARED, fd, 0)))
+        return NULL;
+
+    close(fd);
+
+    for (i = 0, n = 0; i < nfo.st_size; i++)
+        if (p[i] == 10)
+            ++n;
+
+    if (!(entries = malloc(n * sizeof(struct ddb_entry)))){
+        munmap(p, nfo.st_size);
+        return NULL;
+    }
+
+    i = n = 0;
+    while (i < nfo.st_size){
+        entries[n].data = &p[i];
+        entries[n].length = 0;
+        while (i < nfo.st_size && p[i] != 10){
+            ++entries[n].length;
+            ++i;
+        }
+        ++i;
+        ++n;
+    }
+    while (1){
+        view = ddb_create_view(db, entries, n);
+        ddb_free_view(view);
+    }
+    free(entries);
+    return view;
 }
 
 static struct ddb *open_discodb(const char *file)
@@ -164,7 +213,20 @@ int main(int argc, char **argv)
                 }
                 int num_q = 0;
                 struct ddb_query_clause *q = parse_cnf(&argv[3], argc - 3, &num_q);
-                print_cursor(db, ddb_query(db, q, num_q));
+                char *view_file = getenv("VIEW");
+                if (view_file){
+                    struct ddb_view *view;
+                    if ((view = load_view(view_file, db))){
+                        fprintf(stderr, "View loaded successfully (%d items)\n",
+                                ddb_view_size(view));
+                    }else{
+                        fprintf(stderr, "Loading view from %s failed\n", view_file);
+                        exit(1);
+                    }
+                    print_cursor(db, ddb_query(db, q, num_q));
+                    ddb_free_view(view);
+                }else
+                    print_cursor(db, ddb_query(db, q, num_q));
                 free(q[0].terms);
                 free(q);
         }else
