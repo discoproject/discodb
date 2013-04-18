@@ -87,8 +87,11 @@ static struct ddb_view *load_view(const char *file, struct ddb *db)
     int fd, i, n;
     struct stat nfo;
     char *p;
-    struct ddb_entry *entries;
     struct ddb_view *view;
+    struct ddb_view_cons *cons;
+
+    if (!(cons = ddb_view_cons_new()))
+        return NULL;
 
     if ((fd = open(file, O_RDONLY)) == -1)
         return NULL;
@@ -97,33 +100,32 @@ static struct ddb_view *load_view(const char *file, struct ddb *db)
         return NULL;
 
     if (!(p = mmap(0, nfo.st_size, PROT_READ, MAP_SHARED, fd, 0)))
-        return NULL;
+        goto err;
 
     close(fd);
 
-    for (i = 0, n = 0; i < nfo.st_size; i++)
-        if (p[i] == 10)
-            ++n;
-
-    if (!(entries = malloc(n * sizeof(struct ddb_entry)))){
-        munmap(p, nfo.st_size);
-        return NULL;
-    }
-
     i = n = 0;
     while (i < nfo.st_size){
-        entries[n].data = &p[i];
-        entries[n].length = 0;
+        struct ddb_entry e;
+        e.data = &p[i];
+        e.length = 0;
         while (i < nfo.st_size && p[i] != 10){
-            ++entries[n].length;
+            ++e.length;
             ++i;
         }
         ++i;
-        ++n;
+        if (ddb_view_cons_add(cons, &e))
+            goto err;
     }
-    view = ddb_create_view(db, entries, n);
-    free(entries);
+    view = ddb_view_cons_finalize(cons, db);
+    ddb_view_cons_free(cons);
+    munmap(p, nfo.st_size);
     return view;
+err:
+    ddb_view_cons_free(cons);
+    if (p)
+        munmap(p, nfo.st_size);
+    return NULL;
 }
 
 static struct ddb *open_discodb(const char *file)
@@ -224,7 +226,7 @@ int main(int argc, char **argv)
                 print_cursor(db, ddb_query_view(db, q, num_q, view));
                 free(q[0].terms);
                 free(q);
-                ddb_free_view(view);
+                ddb_view_free(view);
         }else
                 usage();
 
