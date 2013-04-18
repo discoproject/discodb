@@ -71,7 +71,7 @@ static struct ddb_query_clause *parse_cnf(char **tokens, int num, int *num_claus
         for (i = 0; i < *num_clauses; i++){
                 printf("dbg Clause:\n");
                 for (j = 0; j < clauses[i].num_terms; j++){
-                        if (clauses[i].terms[j].not)
+                        if (clauses[i].terms[j].nnot)
                                 printf("dbg NOT ");
                         printf("dbg %.*s\n", clauses[i].terms[j].key.length,
                                 clauses[i].terms[j].key.data);
@@ -211,8 +211,8 @@ int main(int argc, char **argv)
                 int num_q = 0;
                 struct ddb_query_clause *q = parse_cnf(&argv[3], argc - 3, &num_q);
                 char *view_file = getenv("VIEW");
+                struct ddb_view *view = NULL;
                 if (view_file){
-                    struct ddb_view *view;
                     if ((view = load_view(view_file, db))){
                         fprintf(stderr, "View loaded successfully (%d items)\n",
                                 ddb_view_size(view));
@@ -220,12 +220,11 @@ int main(int argc, char **argv)
                         fprintf(stderr, "Loading view from %s failed\n", view_file);
                         exit(1);
                     }
-                    print_cursor(db, ddb_query(db, q, num_q));
-                    ddb_free_view(view);
-                }else
-                    print_cursor(db, ddb_query(db, q, num_q));
+                }
+                print_cursor(db, ddb_query_view(db, q, num_q, view));
                 free(q[0].terms);
                 free(q);
+                ddb_free_view(view);
         }else
                 usage();
 

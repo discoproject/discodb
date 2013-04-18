@@ -104,6 +104,11 @@ struct ddb_cnf_cursor{
     valueid_t base_id;
 };
 
+struct ddb_view_cursor{
+    const struct ddb_view *view;
+    uint32_t index;
+};
+
 struct ddb_cursor{
     const struct ddb *db;
 
@@ -117,6 +122,7 @@ struct ddb_cursor{
         struct ddb_unique_values_cursor uvalues;
         struct ddb_key_cursor keys;
         struct ddb_cnf_cursor cnf;
+        struct ddb_view_cursor view;
     } cursor;
     const struct ddb_entry *(*next)(struct ddb_cursor*);
 
@@ -130,6 +136,6 @@ const struct ddb_entry *ddb_cnf_cursor_next(struct ddb_cursor *c);
 
 valueid_t ddb_val_next(struct ddb_cnf_term *t);
 valueid_t ddb_not_next(struct ddb_cnf_term *t);
-
+valueid_t ddb_view_next(struct ddb_cnf_term *t);
 
 #endif /* __DDB_INTERNAL_H__ */

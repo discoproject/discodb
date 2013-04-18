@@ -26,11 +26,11 @@ struct ddb_view *ddb_create_view(struct ddb *db,
 
     view->num_values = 0;
     while (num_view_values && (value = ddb_next(cursor, &err))){
+        ++id;
         if (ddb_map_lookup_str(map, value)){
             view->values[view->num_values++] = id;
             --num_view_values;
         }
-        ++id;
     }
 
     ddb_free_cursor(cursor);

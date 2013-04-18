@@ -185,3 +185,16 @@ valueid_t ddb_val_next(struct ddb_cnf_term *t)
         return 0;
     }
 }
+
+valueid_t ddb_view_next(struct ddb_cnf_term *t)
+{
+    struct ddb_view_cursor *c = &t->cursor->cursor.view;
+    if (c->index < c->view->num_values){
+        t->cur_id = c->view->values[c->index++];
+        return t->cur_id;
+    }else{
+        t->empty = 1;
+        t->cur_id = 0;
+        return 0;
+    }
+}
