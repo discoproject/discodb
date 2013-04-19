@@ -19,6 +19,10 @@ typedef struct {
     struct ddb_cursor *cursor;
 } DiscoDBIter;
 
+typedef struct {
+    PyObject_HEAD
+    struct ddb_view *view;
+} DiscoDBView;
 
 /* General Object Protocol */
 
@@ -32,7 +36,7 @@ static PyObject * DiscoDB_getitem      (DiscoDB *,      PyObject *);
 static PyObject * DiscoDB_keys         (DiscoDB *);
 static PyObject * DiscoDB_values       (DiscoDB *);
 static PyObject * DiscoDB_unique_values(DiscoDB *);
-static PyObject * DiscoDB_query        (DiscoDB *,      PyObject *);
+static PyObject * DiscoDB_query        (DiscoDB *, PyObject *, PyObject *);
 
 /* Serialization / Deserialization Informal Protocol */
 
@@ -59,6 +63,14 @@ static void       DiscoDBIter_dealloc  (DiscoDBIter *);
 static PyObject * DiscoDBIter_count    (DiscoDBIter *);
 static PyObject * DiscoDBIter_size     (DiscoDBIter *);
 static PyObject * DiscoDBIter_iternext (DiscoDBIter *);
+
+/* DiscoDB View Types */
+
+static PyTypeObject DiscoDBViewType;
+
+static PyObject * DiscoDBView_new     (PyTypeObject *, PyObject *, PyObject *);
+static void       DiscoDBView_dealloc (DiscoDBView *);
+static Py_ssize_t DiscoDBView_len     (DiscoDBView *);
 
 /* ddb helpers */
 

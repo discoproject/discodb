@@ -52,7 +52,7 @@ static PyMethodDef DiscoDB_methods[] = {
      "d.values() -> an iterator over the values of d."},
     {"unique_values", (PyCFunction)DiscoDB_unique_values, METH_NOARGS,
      "d.unique_values() -> an iterator over the unique values of d."},
-    {"query", (PyCFunction)DiscoDB_query, METH_O,
+    {"query", (PyCFunction)DiscoDB_query, METH_KEYWORDS | METH_VARARGS,
      "d.query(q) -> an iterator over the values of d whose keys satisfy q."},
     {"dumps", (PyCFunction)DiscoDB_dumps, METH_NOARGS,
      "d.dumps() -> a serialization of d."},
@@ -291,9 +291,10 @@ DiscoDB_unique_values(DiscoDB *self)
 }
 
 static PyObject *
-DiscoDB_query(register DiscoDB *self, PyObject *query_)
+DiscoDB_query(register DiscoDB *self, PyObject *args, PyObject *kwds)
 {
     PyObject
+        *query_ = NULL,
         *clause = NULL,
         *clauses = NULL,
         *literal = NULL,
@@ -304,11 +305,24 @@ DiscoDB_query(register DiscoDB *self, PyObject *query_)
         *pack = NULL,
         *term = NULL,
         *query = NULL;
+    DiscoDBView *view = NULL;
     struct ddb_query_clause *ddb_clauses = NULL;
     struct ddb_cursor *cursor = NULL;
     uint32_t
         i = 0,
         j = 0;
+
+    static char *kwlist[] = {"query", "view", NULL};
+
+    if (self == NULL)
+      goto Done;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O!", kwlist,
+                                     &query_, &DiscoDBViewType, &view))
+      goto Done;
+
+    Py_INCREF(query_);
+    Py_XINCREF(view);
 
     query = PyObject_CallMethod(query_, "resolve", "O", self);
     if (query == NULL)
@@ -371,7 +385,11 @@ DiscoDB_query(register DiscoDB *self, PyObject *query_)
         Py_CLEAR(iterliterals);
     }
 
-    cursor = ddb_query(self->discodb, ddb_clauses, i);
+    if (view)
+        cursor = ddb_query_view(self->discodb, ddb_clauses, i, view->view);
+    else
+        cursor = ddb_query(self->discodb, ddb_clauses, i);
+
     if (cursor == NULL)
         if (ddb_has_error(self->discodb))
             goto Done;
@@ -386,7 +404,8 @@ DiscoDB_query(register DiscoDB *self, PyObject *query_)
     Py_CLEAR(negated);
     Py_CLEAR(pack);
     Py_CLEAR(term);
-    Py_CLEAR(query);
+    Py_CLEAR(query_);
+    Py_CLEAR(view);
     ddb_query_clause_dealloc(ddb_clauses, i);
 
     if (PyErr_Occurred()) {
@@ -521,7 +540,6 @@ DiscoDB_load(PyTypeObject *type, PyObject *args)
     return (PyObject *)self;
 }
 
-
 /* Module Initialization */
 
 PyMODINIT_FUNC
@@ -546,6 +564,12 @@ init_discodb(void)
     Py_INCREF(&DiscoDBIterType);
     PyModule_AddObject(module, "DiscoDBIter",
                        (PyObject *)&DiscoDBIterType);
+
+    if (PyType_Ready(&DiscoDBViewType) < 0)
+      return;
+    Py_INCREF(&DiscoDBViewType);
+    PyModule_AddObject(module, "DiscoDBView",
+                       (PyObject *)&DiscoDBViewType);
 
     DiscoDBError = PyErr_NewException("discodb.DiscoDBError", NULL, NULL);
     Py_INCREF(DiscoDBError);
@@ -871,6 +895,120 @@ DiscoDBIter_iternext(DiscoDBIter *self)
     return Py_BuildValue("s#", next->data, next->length);
 }
 
+/* DiscoDB View Type */
+
+static PySequenceMethods DiscoDBView_sequence = {
+    (lenfunc)DiscoDBView_len /* sq length */
+};
+
+static PyMethodDef DiscoDBView_methods[] = {
+    {NULL}                                   /* Sentinel          */
+};
+
+static PyTypeObject DiscoDBViewType = {
+    PyVarObject_HEAD_INIT(&PyType_Type, 0)
+    "DiscoDBView",                           /* tp_name           */
+    sizeof(DiscoDBView),                     /* tp_basicsize      */
+    0,                                       /* tp_itemsize       */
+    (destructor)DiscoDBView_dealloc,         /* tp_dealloc        */
+    0,                                       /* tp_print          */
+    0,                                       /* tp_getattr        */
+    0,                                       /* tp_setattr        */
+    0,                                       /* tp_compare        */
+    0,                                       /* tp_repr           */
+    0,                                       /* tp_as_number      */
+    &DiscoDBView_sequence,                   /* tp_as_sequence    */
+    0,                                       /* tp_as_mapping     */
+    0,                                       /* tp_hash           */
+    0,                                       /* tp_call           */
+    0,                                       /* tp_str            */
+    PyObject_GenericGetAttr,                 /* tp_getattro       */
+    0,                                       /* tp_setattro       */
+    0,                                       /* tp_as_buffer      */
+    Py_TPFLAGS_DEFAULT |
+    Py_TPFLAGS_BASETYPE,                     /* tp_flags          */
+    0,                                       /* tp_doc            */
+    0,                                       /* tp_traverse       */
+    0,                                       /* tp_clear          */
+    0,                                       /* tp_richcompare    */
+    0,                                       /* tp_weaklistoffset */
+    0,                                       /* tp_iter           */
+    0,                                       /* tp_iternext       */
+    DiscoDBView_methods,                     /* tp_methods        */
+    0,                                       /* tp_members        */
+    0,                                       /* tp_getset         */
+    0,                                       /* tp_base           */
+    0,                                       /* tp_dict           */
+    0,                                       /* tp_descr_get      */
+    0,                                       /* tp_descr_set      */
+    0,                                       /* tp_dictoffset     */
+    0,                                       /* tp_init           */
+    0,                                       /* tp_alloc          */
+    DiscoDBView_new,                         /* tp_new            */
+    0,                                       /* tp_free           */
+};
+
+static PyObject *
+DiscoDBView_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    PyObject *data = NULL,
+             *iter = NULL,
+             *item = NULL;
+    DiscoDB *ddb;
+    DiscoDBView *self = (DiscoDBView*)type->tp_alloc(type, 0);
+    struct ddb_view_cons *cons;
+
+    if (!PyArg_ParseTuple(args, "O!O", &DiscoDBType, &ddb, &data))
+        goto Done;
+
+    Py_INCREF(data);
+    Py_INCREF(ddb);
+
+    if (!(cons = ddb_view_cons_new()))
+        return NULL;
+
+    if (!(iter = PyObject_GetIter(data)))
+        goto Done;
+
+    while ((item = PyIter_Next(iter))){
+        Py_ssize_t len;
+        struct ddb_entry e;
+        if (PyString_AsStringAndSize(item, (char**)&e.data, &len))
+            goto Done;
+        if (len < UINT32_MAX)
+            e.length = len;
+        else{
+            PyErr_SetString(PyExc_ValueError, "String too long");
+            goto Done;
+        }
+        if (ddb_view_cons_add(cons, &e))
+            goto Done;
+        Py_CLEAR(item);
+    }
+    self->view = ddb_view_cons_finalize(cons, ddb->discodb);
+    ddb_view_cons_free(cons);
+Done:
+    Py_CLEAR(data);
+    Py_CLEAR(iter);
+    Py_CLEAR(ddb);
+
+    if (PyErr_Occurred()) {
+        Py_CLEAR(self);
+        return NULL;
+    }
+    return (PyObject*)self;
+}
+
+static void DiscoDBView_dealloc(DiscoDBView *self)
+{
+    ddb_view_free(self->view);
+    PyObject_Del(self);
+}
+
+static Py_ssize_t DiscoDBView_len(DiscoDBView *self)
+{
+    return ddb_view_size(self->view);
+}
 
 /* ddb helpers */
 
