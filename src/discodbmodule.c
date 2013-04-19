@@ -954,9 +954,9 @@ DiscoDBView_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     PyObject *data = NULL,
              *iter = NULL,
              *item = NULL;
-    DiscoDB *ddb;
+    DiscoDB *ddb = NULL;
+    struct ddb_view_cons *cons = NULL;
     DiscoDBView *self = (DiscoDBView*)type->tp_alloc(type, 0);
-    struct ddb_view_cons *cons;
 
     if (!PyArg_ParseTuple(args, "O!O", &DiscoDBType, &ddb, &data))
         goto Done;
@@ -986,8 +986,8 @@ DiscoDBView_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
         Py_CLEAR(item);
     }
     self->view = ddb_view_cons_finalize(cons, ddb->discodb);
-    ddb_view_cons_free(cons);
 Done:
+    ddb_view_cons_free(cons);
     Py_CLEAR(data);
     Py_CLEAR(iter);
     Py_CLEAR(ddb);
