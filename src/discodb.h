@@ -91,7 +91,7 @@ const struct ddb_entry *ddb_next(struct ddb_cursor *cur, int *errcode);
 uint64_t ddb_resultset_size(const struct ddb_cursor *cur);
 uint64_t ddb_cursor_count(struct ddb_cursor *c, int *err);
 
-struct ddb_view_cons *ddb_view_cons_new();
+struct ddb_view_cons *ddb_view_cons_new(void);
 int ddb_view_cons_add(const struct ddb_view_cons *cons,
                       const struct ddb_entry *value);
 struct ddb_view *ddb_view_cons_finalize(const struct ddb_view_cons *cons,
