@@ -981,11 +981,14 @@ DiscoDBView_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
             PyErr_SetString(PyExc_ValueError, "String too long");
             goto Done;
         }
-        if (ddb_view_cons_add(cons, &e))
+        if (ddb_view_cons_add(cons, &e)){
+            PyErr_SetString(PyExc_MemoryError, "Adding value to view failed");
             goto Done;
+        }
         Py_CLEAR(item);
     }
-    self->view = ddb_view_cons_finalize(cons, ddb->discodb);
+    if (!(self->view = ddb_view_cons_finalize(cons, ddb->discodb)))
+        PyErr_SetString(PyExc_RuntimeError, "Couldn't finalize the view");
 Done:
     ddb_view_cons_free(cons);
     Py_CLEAR(data);
