@@ -405,6 +405,7 @@ DiscoDB_query(register DiscoDB *self, PyObject *args, PyObject *kwds)
     Py_CLEAR(pack);
     Py_CLEAR(term);
     Py_CLEAR(query_);
+    Py_CLEAR(query);
     Py_CLEAR(view);
     ddb_query_clause_dealloc(ddb_clauses, i);
 
