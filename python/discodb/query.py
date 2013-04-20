@@ -1,8 +1,7 @@
 """
 :mod:`discodb.query` -- Supporting objects for the DiscoDB query interface
 ==========================================================================
-
->>> from .discodb import Q
+>>> from discodb import Q
 >>> Q.parse('~(B | C)') == Q.parse('~B & ~C')
 True
 >>> Q.parse('(A & B) | C') == Q.parse('(A | C) & (B | C)')
@@ -14,28 +13,28 @@ True
 >>> Q.urlscan(Q.parse('(a | b) & ~c').urlformat()) == Q.parse('~c & (a | b)')
 True
 
->>> from .discodb import DiscoDB
->>> discodb = DiscoDB({'A': ['B', 'C'], 'B': 'D', 'C': 'E', 'D': 'F', 'E': 'G'})
->>> sorted(discodb.query(Q.parse('A')))
+>>> from discodb import DiscoDB
+>>> d = DiscoDB({'A': ['B', 'C'], 'B': 'D', 'C': 'E', 'D': 'F', 'E': 'G'})
+>>> sorted(d.query(Q.parse('A')))
 ['B', 'C']
->>> sorted(discodb.query(Q.parse('*A')))
+>>> sorted(d.query(Q.parse('*A')))
 ['D', 'E']
->>> sorted(discodb.query(Q.parse('A | B')))
+>>> sorted(d.query(Q.parse('A | B')))
 ['B', 'C', 'D']
->>> sorted(discodb.query(Q.parse('*A | B')))
+>>> sorted(d.query(Q.parse('*A | B')))
 ['D', 'E']
->>> sorted(discodb.query(Q.parse('**A | *B')))
+>>> sorted(d.query(Q.parse('**A | *B')))
 ['F', 'G']
 
->>> sorted((str(k), sorted(vs)) for k, vs in discodb.metaquery(Q.parse('A')))
+>>> sorted((str(k), sorted(vs)) for k, vs in d.metaquery(Q.parse('A')))
 [('A', ['B', 'C'])]
->>> sorted((str(k), sorted(vs)) for k, vs in discodb.metaquery(Q.parse('*A')))
+>>> sorted((str(k), sorted(vs)) for k, vs in d.metaquery(Q.parse('*A')))
 [('B', ['D']), ('C', ['E'])]
->>> sorted((str(k), sorted(vs)) for k, vs in discodb.metaquery(Q.parse('A | B')))
+>>> sorted((str(k), sorted(vs)) for k, vs in d.metaquery(Q.parse('A | B')))
 [('A | B', ['B', 'C', 'D'])]
->>> sorted((str(k), sorted(vs)) for k, vs in discodb.metaquery(Q.parse('*A | B')))
+>>> sorted((str(k), sorted(vs)) for k, vs in d.metaquery(Q.parse('*A | B')))
 [('B', ['D']), ('C | B', ['D', 'E'])]
->>> sorted((str(k), sorted(vs)) for k, vs in discodb.metaquery(Q.parse('**A | *B')))
+>>> sorted((str(k), sorted(vs)) for k, vs in d.metaquery(Q.parse('**A | *B')))
 [('D', ['F']), ('E | D', ['F', 'G'])]
 """
 from operator import __and__, __or__

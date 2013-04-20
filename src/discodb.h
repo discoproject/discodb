@@ -59,6 +59,7 @@ struct ddb_query_clause{
 };
 
 struct ddb_cons *ddb_cons_new(void);
+struct ddb_cons *ddb_cons_ddb(struct ddb *db);
 void ddb_cons_free(struct ddb_cons *cons);
 
 int ddb_cons_add(struct ddb_cons *db,

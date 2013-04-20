@@ -44,7 +44,7 @@ int ddb_get_valuestr(struct ddb_cursor *c, valueid_t id)
 {
     if (c->no_valuestr)
         return c->errno;
-    
+
     const struct ddb *db = c->db;
     uint64_t len = db->id2value[id] - db->id2value[id - 1];
     const char *data = &db->buf[db->id2value[id - 1]];
@@ -274,13 +274,13 @@ static const struct ddb_entry *empty_next(struct ddb_cursor *c)
     return NULL;
 }
 
+int key_matches(const struct ddb_cursor *c, const struct ddb_entry *key)
+{
+  return c->entry.length == key->length && !memcmp(c->entry.data, key->data, key->length);
+}
+
 struct ddb_cursor *ddb_getitem(struct ddb *db, const struct ddb_entry *key)
 {
-    int key_matches(const struct ddb_cursor *c)
-    {
-        return c->entry.length == key->length &&
-            !memcmp(c->entry.data, key->data, key->length);
-    }
 
     struct ddb_cursor *c = NULL;
     if (!(c = acalloc(sizeof(struct ddb_cursor)))){
@@ -295,7 +295,7 @@ struct ddb_cursor *ddb_getitem(struct ddb *db, const struct ddb_entry *key)
             key->data, key->length);
         if (id < db->num_keys)
             get_item(c, id, &c->cursor.value);
-        if (id >= db->num_keys || !key_matches(c)){
+        if (id >= db->num_keys || !key_matches(c, key)){
             c->num_items = c->cursor.value.num_left = 0;
             c->next = empty_next;
             return c;
@@ -305,7 +305,7 @@ struct ddb_cursor *ddb_getitem(struct ddb *db, const struct ddb_entry *key)
         uint32_t i = db->num_keys;
         while (i--){
             get_item(c, i, &c->cursor.value);
-            if (key_matches(c))
+            if (key_matches(c, key))
                 goto found;
         }
         c->num_items = c->cursor.value.num_left = 0;

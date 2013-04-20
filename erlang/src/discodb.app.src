@@ -1,0 +1,4 @@
+%% -*- erlang -*-
+{application, discodb,
+ [{vsn, []},
+  {applications, [kernel, stdlib]}]}.

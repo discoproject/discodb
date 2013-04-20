@@ -76,7 +76,6 @@ static Py_ssize_t DiscoDBView_len     (DiscoDBView *);
 
 static struct ddb              *ddb_alloc               (void);
 static struct ddb_cons         *ddb_cons_alloc          (void);
-static struct ddb_entry        *ddb_entry_alloc         (size_t);
 static struct ddb_query_clause *ddb_query_clause_alloc  (size_t);
 static struct ddb_query_term   *ddb_query_term_alloc    (size_t);
 static        void              ddb_cons_dealloc        (struct ddb_cons *);

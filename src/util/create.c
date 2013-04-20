@@ -4,22 +4,21 @@
 #include <string.h>
 
 #include <discodb.h>
+#define MAX_KV_SIZE 1<<20
 
 static void read_pairs(FILE *in, struct ddb_cons *db)
 {
-    char *key;
-    char *value;
+    char key[MAX_KV_SIZE];
+    char val[MAX_KV_SIZE];
     uint32_t lc = 0;
 
-    while(fscanf(in, "%as %as\n", &key, &value) == 2){
+    while(fscanf(in, "%s %s\n", key, val) == 2){
         struct ddb_entry key_e = {.data = key, .length = strlen(key)};
-        struct ddb_entry val_e = {.data = value, .length = strlen(value)};
+        struct ddb_entry val_e = {.data = val, .length = strlen(val)};
         if (ddb_cons_add(db, &key_e, &val_e)){
-            fprintf(stderr, "Adding '%s':'%s' failed\n", key, value);
+            fprintf(stderr, "Adding '%s':'%s' failed\n", key, val);
             exit(1);
         }
-        free(key);
-        free(value);
         ++lc;
     }
     fclose(in);
@@ -28,16 +27,15 @@ static void read_pairs(FILE *in, struct ddb_cons *db)
 
 static void read_keys(FILE *in, struct ddb_cons *db)
 {
-    char *key;
+    char key[MAX_KV_SIZE];
     uint32_t lc = 0;
 
-    while(fscanf(in, "%as\n", &key) == 1){
+    while(fscanf(in, "%s\n", key) == 1){
         struct ddb_entry key_e = {.data = key, .length = strlen(key)};
         if (ddb_cons_add(db, &key_e, NULL)){
             fprintf(stderr, "Adding '%s' failed\n", key);
             exit(1);
         }
-        free(key);
         ++lc;
     }
     fclose(in);
