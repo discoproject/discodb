@@ -82,5 +82,6 @@ static        void              ddb_cons_dealloc        (struct ddb_cons *);
 static        void              ddb_cursor_dealloc      (struct ddb_cursor *);
 static        void              ddb_query_clause_dealloc(struct ddb_query_clause *, uint32_t);
 static        int               ddb_has_error           (struct ddb *);
+static        int               ddb_string_to_entry     (PyObject *, struct ddb_entry *);
 
 #define DiscoDB_CLEAR(op) do { free(op); op = NULL; } while(0)
