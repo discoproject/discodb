@@ -208,6 +208,9 @@ ErlDDB_free(ErlNifEnv *env, void *res) {
   enif_thread_join(ddb->tid, NULL);
   enif_thread_opts_destroy(ddb->opts);
 
+  while (!queue_empty(ddb->msgs))
+    Message_free(queue_pop(ddb->msgs));
+
   queue_free(ddb->msgs);
 
   if (ddb->kind == KIND_CONS && ddb->cons)
