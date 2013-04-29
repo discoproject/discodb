@@ -70,6 +70,7 @@ queue_free(queue *queue) {
     queue->length = -1;
     enif_mutex_unlock(lock);
 
+    assert(length == 0 && "Attempting to destroy a non-empty queue.");
     enif_cond_destroy(cond);
     enif_mutex_destroy(lock);
     enif_free(queue);
