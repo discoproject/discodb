@@ -51,10 +51,7 @@ wait(DDB) ->
         {discodb, ok} ->
             DDB;
         {discodb, Reply} ->
-            Reply;
-        Else ->
-            self() ! Else,
-            wait(DDB)
+            Reply
     end.
 
 init(Type, Func, Args) ->
