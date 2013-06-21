@@ -276,9 +276,9 @@ class MetaLiteral(Literal):
     def expand(self, discodb):
         for q in self.term.expand(discodb):
             for v in discodb.query(q):
-                yield not Q.wrap(v) if self.negated else Q.wrap(v)
+                yield ~Q.wrap(v) if self.negated else Q.wrap(v)
 
     def resolve(self, discodb):
         q = self.term.resolve(discodb)
         clause = Clause(Literal(v) for v in discodb.query(q))
-        return Q.wrap(not clause if self.negated else clause)
+        return Q.wrap(~clause if self.negated else clause)
