@@ -2,6 +2,8 @@
 #ifndef __DDB_BITS_H__
 #define __DDB_BITS_H__
 
+#include <stdint.h>
+
 static uint32_t read_bits(const char *src, uint64_t offs, uint32_t bits)
 {
     uint64_t *src_w = (uint64_t*)&src[offs >> 3];
