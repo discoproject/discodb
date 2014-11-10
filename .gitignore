@@ -1,6 +1,8 @@
+*.a
 *.dSYM
 *.o
 *.pyc
+*.so
 build
 doc/.build
 create

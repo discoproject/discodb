@@ -6,19 +6,27 @@ DISCODB_RELEASE = 0.2
 prefix     = /usr/local
 
 CFLAGS     = -O3
+CSRCS      = $(wildcard src/*.c)
+COBJS      = $(patsubst %.c,%.o,$(CSRCS))
 REBAR      = rebar
 PYTHON     = python
 SPHINXOPTS = "-D version=$(DISCODB_VERSION) -D release=$(DISCODB_RELEASE)"
 
 .PHONY: build clean doc doc-clean erlang python
 
-build: $(patsubst %.c,%.o,$(wildcard src/*.c))
+build: $(COBJS)
 utils: create query
 create query: build
-	$(CC) $(CFLAGS) -Isrc -lcmph -o $@ src/util/$@.c src/*.o
+	$(CC) $(CFLAGS) -Isrc -o $@ src/util/$@.c src/*.o -lcmph
 
 src/%.o: src/%.c
 	$(CC) $(CFLAGS) -Isrc -c $< -o $@
+
+libdiscodb.a: $(COBJS)
+	$(AR) -ruvs $@ $^
+
+libdiscodb.so: $(COBJS)
+	$(CC) $(CFLAGS) -Isrc -shared -o $@ $^ -lcmph
 
 clean:
 	rm -rf `find . -name \*.o`
