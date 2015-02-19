@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from discodb import DiscoDB
+from discodb import DiscoDB, DiscoDBConstructor
 from random import choice
 from string import letters
 from timeit import timeit
@@ -18,6 +18,13 @@ def test_leak():
         for k in d.keys():
             for v in d.values():
                 t = k == v
+
+def test_cons_leak():
+    while True:
+        c = DiscoDBConstructor()
+        for l in 'abcdefghijklmnopqrstuvwxyz':
+            c.add(l, l)
+        c.finalize()
 
 def len_all(d):
     for k in d.keys():

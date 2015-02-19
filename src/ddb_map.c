@@ -1,4 +1,4 @@
-
+#include <stdlib.h>
 #include <string.h>
 
 #include <ddb_internal.h>
@@ -35,18 +35,18 @@ struct ddb_map{
 };
 
 struct ddb_map_item{
-    uint64_t key;
-    uint64_t value;
+    uintptr_t key;
+    uintptr_t value;
 };
 
 struct ddb_map_cursor{
     const struct ddb_map *map;
-    uint64_t *keys;
+    uintptr_t *keys;
     uint32_t length;
     uint32_t i;
 };
 
-static uint64_t *new_item(
+static uintptr_t *new_item(
     struct ddb_map *map,
     struct leaf *leaf,
     const struct ddb_entry *str_key,
@@ -66,7 +66,7 @@ static uint64_t *new_item(
 
     struct ddb_map_item *item = &leaf->items[leaf->num_items - 1];
     if (str_key)
-        item->key = (uint64_t)ddb_membuffer_copy_ns(
+        item->key = (intptr_t)ddb_membuffer_copy_ns(
             map->key_buffer, str_key->data, str_key->length);
     else
         item->key = int_key;
@@ -78,7 +78,7 @@ static uint64_t *new_item(
     return &item->value;
 }
 
-static uint64_t *lookup_leaf(
+static uintptr_t *lookup_leaf(
     const struct ddb_map *map,
     uint32_t hash,
     const struct ddb_entry *str_key,
@@ -112,35 +112,35 @@ static uint64_t *lookup_leaf(
     return NULL;
 }
 
-uint64_t *ddb_map_lookup_int(const struct ddb_map *map, uint32_t key)
+uintptr_t *ddb_map_lookup_int(const struct ddb_map *map, uint32_t key)
 {
     uint32_t hash = SuperFastHash((const char*)&key, 4);
     return lookup_leaf(map, hash, NULL, key, NULL);
 }
 
-uint64_t *ddb_map_lookup_str(const struct ddb_map *map,
+uintptr_t *ddb_map_lookup_str(const struct ddb_map *map,
                              const struct ddb_entry *str_key)
 {
     uint32_t hash = SuperFastHash(str_key->data, str_key->length);
     return lookup_leaf(map, hash, str_key, 0, NULL);
 }
 
-uint64_t *ddb_map_insert_int(struct ddb_map *map, uint32_t key)
+uintptr_t *ddb_map_insert_int(struct ddb_map *map, uint32_t key)
 {
     struct leaf *leaf = NULL;
     uint32_t hash = SuperFastHash((const char*)&key, 4);
-    uint64_t *v = lookup_leaf(map, hash, NULL, key, &leaf);
+    uintptr_t *v = lookup_leaf(map, hash, NULL, key, &leaf);
     if (!v)
         v = new_item(map, leaf, NULL, key);
     return v;
 }
 
-uint64_t *ddb_map_insert_str(struct ddb_map *map,
+uintptr_t *ddb_map_insert_str(struct ddb_map *map,
                                 const struct ddb_entry *str_key)
 {
     struct leaf *leaf = NULL;
     uint32_t hash = SuperFastHash(str_key->data, str_key->length);
-    uint64_t *v = lookup_leaf(map, hash, str_key, 0, &leaf);
+    uintptr_t *v = lookup_leaf(map, hash, str_key, 0, &leaf);
     if (!v)
         v = new_item(map, leaf, str_key, 0);
     return v;
@@ -201,7 +201,7 @@ int ddb_map_next_str(struct ddb_map_cursor *c, struct ddb_entry *key)
 
 int ddb_map_next_item_str(struct ddb_map_cursor *c,
                           struct ddb_entry *key,
-                          uint64_t **ptr)
+                          uintptr_t **ptr)
 {
     if (ddb_map_next_str(c, key)){
         *ptr = ddb_map_lookup_str(c->map, key);
@@ -212,7 +212,7 @@ int ddb_map_next_item_str(struct ddb_map_cursor *c,
 
 int ddb_map_next_item_int(struct ddb_map_cursor *c,
                           uint32_t *key,
-                          uint64_t **ptr)
+                          uintptr_t **ptr)
 {
     if (ddb_map_next_int(c, key)){
         *ptr = ddb_map_lookup_int(c->map, *key);

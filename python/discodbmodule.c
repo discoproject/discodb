@@ -52,7 +52,7 @@ static PyMethodDef DiscoDB_methods[] = {
      "d.values() -> an iterator over the values of d."},
     {"unique_values", (PyCFunction)DiscoDB_unique_values, METH_NOARGS,
      "d.unique_values() -> an iterator over the unique values of d."},
-    {"query", (PyCFunction)DiscoDB_query, METH_O,
+    {"query", (PyCFunction)DiscoDB_query, METH_KEYWORDS | METH_VARARGS,
      "d.query(q) -> an iterator over the values of d whose keys satisfy q."},
     {"dumps", (PyCFunction)DiscoDB_dumps, METH_NOARGS,
      "d.dumps() -> a serialization of d."},
@@ -186,28 +186,19 @@ DiscoDB_dealloc(DiscoDB *self)
     Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
-
 /* Mapping Formal / Informal Protocol */
 
 static int
 DiscoDB_contains(register DiscoDB *self, register PyObject *key)
 {
-    PyObject *pack = NULL;
-    struct ddb_entry *kentry = ddb_entry_alloc(1);
     struct ddb_cursor *cursor = NULL;
+    struct ddb_entry kentry;
     int isfound = 1;
 
-    if (kentry == NULL)
+    if (ddb_string_to_entry(key, &kentry))
         goto Done;
 
-    pack = Py_BuildValue("(O)", key);
-    if (pack == NULL)
-        goto Done;
-
-    if (!PyArg_ParseTuple(pack, "s#", &kentry->data, &kentry->length))
-        goto Done;
-
-    cursor = ddb_getitem(self->discodb, kentry);
+    cursor = ddb_getitem(self->discodb, &kentry);
     if (cursor == NULL)
         if (ddb_has_error(self->discodb))
             goto Done;
@@ -216,8 +207,6 @@ DiscoDB_contains(register DiscoDB *self, register PyObject *key)
         isfound = 0;
 
  Done:
-    Py_CLEAR(pack);
-    DiscoDB_CLEAR(kentry);
     ddb_cursor_dealloc(cursor);
 
     if (PyErr_Occurred())
@@ -228,21 +217,13 @@ DiscoDB_contains(register DiscoDB *self, register PyObject *key)
 static PyObject *
 DiscoDB_getitem(register DiscoDB *self, register PyObject *key)
 {
-    PyObject *pack = NULL;
-    struct ddb_entry *kentry = ddb_entry_alloc(1);
     struct ddb_cursor *cursor = NULL;
+    struct ddb_entry kentry;
 
-    if (kentry == NULL)
+    if (ddb_string_to_entry(key, &kentry))
         goto Done;
 
-    pack = Py_BuildValue("(O)", key);
-    if (pack == NULL)
-        goto Done;
-
-    if (!PyArg_ParseTuple(pack, "s#", &kentry->data, &kentry->length))
-        goto Done;
-
-    cursor = ddb_getitem(self->discodb, kentry);
+    cursor = ddb_getitem(self->discodb, &kentry);
     if (cursor == NULL)
         if (ddb_has_error(self->discodb))
             goto Done;
@@ -251,9 +232,6 @@ DiscoDB_getitem(register DiscoDB *self, register PyObject *key)
         PyErr_Format(PyExc_KeyError, "%s", PyBytes_AsString(key));
 
  Done:
-    Py_CLEAR(pack);
-    DiscoDB_CLEAR(kentry);
-
     if (PyErr_Occurred())
         return NULL;
 
@@ -291,9 +269,10 @@ DiscoDB_unique_values(DiscoDB *self)
 }
 
 static PyObject *
-DiscoDB_query(register DiscoDB *self, PyObject *query_)
+DiscoDB_query(register DiscoDB *self, PyObject *args, PyObject *kwds)
 {
     PyObject
+        *query_ = NULL,
         *clause = NULL,
         *clauses = NULL,
         *literal = NULL,
@@ -301,14 +280,24 @@ DiscoDB_query(register DiscoDB *self, PyObject *query_)
         *iterclauses = NULL,
         *iterliterals = NULL,
         *negated = NULL,
-        *pack = NULL,
         *term = NULL,
         *query = NULL;
+    DiscoDBView *view = NULL;
+    Py_ssize_t i = 0, j = 0;
     struct ddb_query_clause *ddb_clauses = NULL;
     struct ddb_cursor *cursor = NULL;
-    uint32_t
-        i = 0,
-        j = 0;
+
+    static char *kwlist[] = {"query", "view", NULL};
+
+    if (self == NULL)
+      goto Done;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|O!", kwlist,
+                                     &query_, &DiscoDBViewType, &view))
+      goto Done;
+
+    Py_INCREF(query_);
+    Py_XINCREF(view);
 
     query = PyObject_CallMethod(query_, "resolve", "O", self);
     if (query == NULL)
@@ -351,18 +340,11 @@ DiscoDB_query(register DiscoDB *self, PyObject *query_)
 
             ddb_clauses[i].terms[j].nnot = PyObject_IsTrue(negated);
 
-            pack = Py_BuildValue("(O)", term);
-            if (pack == NULL)
-                goto Done;
-
-            if (!PyArg_ParseTuple(pack, "s#",
-                                  &ddb_clauses[i].terms[j].key.data,
-                                  &ddb_clauses[i].terms[j].key.length))
+            if (ddb_string_to_entry(term, &ddb_clauses[i].terms[j].key))
                 goto Done;
 
             Py_CLEAR(literal);
             Py_CLEAR(negated);
-            Py_CLEAR(pack);
             Py_CLEAR(term);
         }
 
@@ -371,7 +353,11 @@ DiscoDB_query(register DiscoDB *self, PyObject *query_)
         Py_CLEAR(iterliterals);
     }
 
-    cursor = ddb_query(self->discodb, ddb_clauses, i);
+    if (view)
+        cursor = ddb_query_view(self->discodb, ddb_clauses, i, view->view);
+    else
+        cursor = ddb_query(self->discodb, ddb_clauses, i);
+
     if (cursor == NULL)
         if (ddb_has_error(self->discodb))
             goto Done;
@@ -384,9 +370,10 @@ DiscoDB_query(register DiscoDB *self, PyObject *query_)
     Py_CLEAR(iterclauses);
     Py_CLEAR(iterliterals);
     Py_CLEAR(negated);
-    Py_CLEAR(pack);
     Py_CLEAR(term);
+    Py_CLEAR(query_);
     Py_CLEAR(query);
+    Py_CLEAR(view);
     ddb_query_clause_dealloc(ddb_clauses, i);
 
     if (PyErr_Occurred()) {
@@ -442,16 +429,11 @@ static PyObject *
 DiscoDB_loads(PyTypeObject *type, PyObject *bytes)
 {
     DiscoDB *self = (DiscoDB *)type->tp_alloc(type, 0);
-    PyObject *pack = NULL;
     const char *buffer;
     Py_ssize_t n;
 
     if (self != NULL) {
-        pack = Py_BuildValue("(O)", bytes);
-        if (pack == NULL)
-            goto Done;
-
-        if (!PyArg_ParseTuple(pack, "s#", &buffer, &n))
+        if (PyString_AsStringAndSize(bytes, (char**)&buffer, &n))
             goto Done;
 
         Py_INCREF(bytes);
@@ -467,8 +449,6 @@ DiscoDB_loads(PyTypeObject *type, PyObject *bytes)
     }
 
  Done:
-    Py_CLEAR(pack);
-
     if (PyErr_Occurred()) {
         Py_CLEAR(self);
         return NULL;
@@ -521,7 +501,6 @@ DiscoDB_load(PyTypeObject *type, PyObject *args)
     return (PyObject *)self;
 }
 
-
 /* Module Initialization */
 
 PyMODINIT_FUNC
@@ -546,6 +525,12 @@ init_discodb(void)
     Py_INCREF(&DiscoDBIterType);
     PyModule_AddObject(module, "DiscoDBIter",
                        (PyObject *)&DiscoDBIterType);
+
+    if (PyType_Ready(&DiscoDBViewType) < 0)
+      return;
+    Py_INCREF(&DiscoDBViewType);
+    PyModule_AddObject(module, "DiscoDBView",
+                       (PyObject *)&DiscoDBViewType);
 
     DiscoDBError = PyErr_NewException("discodb.DiscoDBError", NULL, NULL);
     Py_INCREF(DiscoDBError);
@@ -615,7 +600,7 @@ static PyObject *
 DiscoDBConstructor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 {
     DiscoDBConstructor *self = (DiscoDBConstructor *)type->tp_alloc(type, 0);
-    PyObject *ddb_type = NULL;
+    PyTypeObject *ddb_type = &DiscoDBType;
 
     static char *kwlist[] = {"ddb_type", NULL};
 
@@ -625,7 +610,12 @@ DiscoDBConstructor_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "|O", kwlist, &ddb_type))
       goto Done;
 
-    Py_INCREF(self->ddb_type = ddb_type ? (PyTypeObject *)ddb_type : &DiscoDBType);
+    if (!PyType_Check(ddb_type) || !PyType_IsSubtype(ddb_type, &DiscoDBType)) {
+      PyErr_SetString(DiscoDBError, "Not a valid type.");
+      goto Done;
+    }
+
+    Py_INCREF(self->ddb_type = ddb_type);
 
     self->ddb_cons = ddb_cons_alloc();
     if (self->ddb_cons == NULL)
@@ -655,18 +645,11 @@ DiscoDBConstructor_add(DiscoDBConstructor *self, PyObject *item)
         *itervalues = NULL,
         *value = NULL,
         *values = NULL,
-        *valueseq = NULL,
-        *vpack = NULL;
-    struct ddb_entry
-        *kentry = NULL,
-        *ventry = NULL;
+        *valueseq = NULL;
     uint64_t n;
+    struct ddb_entry kentry, ventry;
 
-    kentry = ddb_entry_alloc(1);
-    if (kentry == NULL)
-      goto Done;
-
-    if (!PyArg_ParseTuple(item, "s#O", &kentry->data, &kentry->length, &values))
+    if (!PyArg_ParseTuple(item, "s#O", &kentry.data, &kentry.length, &values))
       goto Done;
 
     Py_XINCREF(values);
@@ -687,29 +670,19 @@ DiscoDBConstructor_add(DiscoDBConstructor *self, PyObject *item)
       goto Done;
 
     for (n = 0; (value = PyIter_Next(itervalues)); n++) {
-      ventry = ddb_entry_alloc(1);
-      if (ventry == NULL)
-        goto Done;
+      if (ddb_string_to_entry(value, &ventry))
+          goto Done;
 
-      vpack = Py_BuildValue("(O)", value);
-      if (vpack == NULL)
-        goto Done;
-
-      if (!PyArg_ParseTuple(vpack, "s#", &ventry->data, &ventry->length))
-        goto Done;
-
-      if (ddb_cons_add(self->ddb_cons, kentry, ventry)) {
+      if (ddb_cons_add(self->ddb_cons, &kentry, &ventry)) {
         PyErr_SetString(DiscoDBError, "Construction failed");
         goto Done;
       }
 
       Py_CLEAR(value);
-      Py_CLEAR(vpack);
-      DiscoDB_CLEAR(ventry);
     }
 
     if (n == 0)
-      if (ddb_cons_add(self->ddb_cons, kentry, NULL)) {
+      if (ddb_cons_add(self->ddb_cons, &kentry, NULL)) {
         PyErr_SetString(DiscoDBError, "Construction failed");
         goto Done;
       }
@@ -719,9 +692,6 @@ DiscoDBConstructor_add(DiscoDBConstructor *self, PyObject *item)
     Py_CLEAR(value);
     Py_CLEAR(values);
     Py_CLEAR(valueseq);
-    Py_CLEAR(vpack);
-    DiscoDB_CLEAR(kentry);
-    DiscoDB_CLEAR(ventry);
 
     if (PyErr_Occurred())
       return NULL;
@@ -871,6 +841,116 @@ DiscoDBIter_iternext(DiscoDBIter *self)
     return Py_BuildValue("s#", next->data, next->length);
 }
 
+/* DiscoDB View Type */
+
+static PySequenceMethods DiscoDBView_sequence = {
+    (lenfunc)DiscoDBView_len /* sq length */
+};
+
+static PyMethodDef DiscoDBView_methods[] = {
+    {NULL}                                   /* Sentinel          */
+};
+
+static PyTypeObject DiscoDBViewType = {
+    PyVarObject_HEAD_INIT(&PyType_Type, 0)
+    "DiscoDBView",                           /* tp_name           */
+    sizeof(DiscoDBView),                     /* tp_basicsize      */
+    0,                                       /* tp_itemsize       */
+    (destructor)DiscoDBView_dealloc,         /* tp_dealloc        */
+    0,                                       /* tp_print          */
+    0,                                       /* tp_getattr        */
+    0,                                       /* tp_setattr        */
+    0,                                       /* tp_compare        */
+    0,                                       /* tp_repr           */
+    0,                                       /* tp_as_number      */
+    &DiscoDBView_sequence,                   /* tp_as_sequence    */
+    0,                                       /* tp_as_mapping     */
+    0,                                       /* tp_hash           */
+    0,                                       /* tp_call           */
+    0,                                       /* tp_str            */
+    PyObject_GenericGetAttr,                 /* tp_getattro       */
+    0,                                       /* tp_setattro       */
+    0,                                       /* tp_as_buffer      */
+    Py_TPFLAGS_DEFAULT |
+    Py_TPFLAGS_BASETYPE,                     /* tp_flags          */
+    0,                                       /* tp_doc            */
+    0,                                       /* tp_traverse       */
+    0,                                       /* tp_clear          */
+    0,                                       /* tp_richcompare    */
+    0,                                       /* tp_weaklistoffset */
+    0,                                       /* tp_iter           */
+    0,                                       /* tp_iternext       */
+    DiscoDBView_methods,                     /* tp_methods        */
+    0,                                       /* tp_members        */
+    0,                                       /* tp_getset         */
+    0,                                       /* tp_base           */
+    0,                                       /* tp_dict           */
+    0,                                       /* tp_descr_get      */
+    0,                                       /* tp_descr_set      */
+    0,                                       /* tp_dictoffset     */
+    0,                                       /* tp_init           */
+    0,                                       /* tp_alloc          */
+    DiscoDBView_new,                         /* tp_new            */
+    0,                                       /* tp_free           */
+};
+
+static PyObject *
+DiscoDBView_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
+{
+    PyObject *data = NULL,
+             *iter = NULL,
+             *item = NULL;
+    DiscoDB *ddb = NULL;
+    struct ddb_view_cons *cons = NULL;
+    DiscoDBView *self = (DiscoDBView*)type->tp_alloc(type, 0);
+
+    if (!PyArg_ParseTuple(args, "O!O", &DiscoDBType, &ddb, &data))
+        goto Done;
+
+    Py_INCREF(data);
+    Py_INCREF(ddb);
+
+    if (!(cons = ddb_view_cons_new()))
+        return NULL;
+
+    if (!(iter = PyObject_GetIter(data)))
+        goto Done;
+
+    while ((item = PyIter_Next(iter))){
+        struct ddb_entry e;
+        if (ddb_string_to_entry(item, &e))
+            goto Done;
+        if (ddb_view_cons_add(cons, &e)){
+            PyErr_SetString(PyExc_MemoryError, "Adding value to view failed");
+            goto Done;
+        }
+        Py_CLEAR(item);
+    }
+    if (!(self->view = ddb_view_cons_finalize(cons, ddb->discodb)))
+        PyErr_SetString(PyExc_RuntimeError, "Couldn't finalize the view");
+Done:
+    ddb_view_cons_free(cons);
+    Py_CLEAR(data);
+    Py_CLEAR(iter);
+    Py_CLEAR(ddb);
+
+    if (PyErr_Occurred()) {
+        Py_CLEAR(self);
+        return NULL;
+    }
+    return (PyObject*)self;
+}
+
+static void DiscoDBView_dealloc(DiscoDBView *self)
+{
+    ddb_view_free(self->view);
+    PyObject_Del(self);
+}
+
+static Py_ssize_t DiscoDBView_len(DiscoDBView *self)
+{
+    return ddb_view_size(self->view);
+}
 
 /* ddb helpers */
 
@@ -890,15 +970,6 @@ ddb_cons_alloc(void)
     if (!cons)
         PyErr_NoMemory();
     return cons;
-}
-
-static struct ddb_entry *
-ddb_entry_alloc(size_t count)
-{
-    struct ddb_entry *entry = (struct ddb_entry *)calloc(count, sizeof(struct ddb_entry));
-    if (!entry)
-        PyErr_NoMemory();
-    return entry;
 }
 
 static struct ddb_query_clause *
@@ -953,3 +1024,19 @@ ddb_has_error(struct ddb *discodb)
         PyErr_SetString(DiscoDBError, errstr);
     return errcode;
 }
+
+static int
+ddb_string_to_entry(PyObject *str, struct ddb_entry *e)
+{
+    Py_ssize_t len = 0;
+    if (PyString_AsStringAndSize(str, (char**)&e->data, &len))
+        return 1;
+    if (len < UINT32_MAX){
+        e->length = len;
+        return 0;
+    }else{
+        PyErr_SetString(PyExc_ValueError, "String too long");
+        return 1;
+    }
+}
+

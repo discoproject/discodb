@@ -1,4 +1,4 @@
-from ._discodb import _DiscoDB, DiscoDBConstructor, DiscoDBError, DiscoDBIter
+from ._discodb import _DiscoDB, DiscoDBConstructor, DiscoDBError, DiscoDBIter, DiscoDBView
 from .query import Q
 from .tools import kvgroup
 
@@ -93,7 +93,7 @@ class DiscoDB(_DiscoDB):
             query = Q.parse(query)
         return DiscoDBItemInquiry(lambda: query.metaquery(self))
 
-    def query(self, query):
+    def query(self, query, view=None):
         """
         an inquiry over the values of self whose keys satisfy the query.
 
@@ -102,7 +102,13 @@ class DiscoDB(_DiscoDB):
         """
         if isinstance(query, basestring):
             query = Q.parse(query)
-        return DiscoDBLazyInquiry(lambda: super(DiscoDB, self).query(query))
+        if view == None:
+            l = lambda: super(DiscoDB, self).query(query)
+        else:
+            if not isinstance(view, DiscoDBView):
+                view = self.make_view(view)
+            l = lambda: super(DiscoDB, self).query(query, view=view)
+        return DiscoDBLazyInquiry(l)
 
     def peek(self, key, default=None):
         """first element of self[key] or else default."""
@@ -111,10 +117,14 @@ class DiscoDB(_DiscoDB):
         except StopIteration:
             return default
 
+    def make_view(self, data):
+        return DiscoDBView(self, data)
+
 __all__ = ['DiscoDB',
            'DiscoDBConstructor',
            'DiscoDBError',
            'DiscoDBInquiry',
            'DiscoDBIter',
+           'DiscoDBView',
            'Q',
            'kvgroup']

@@ -9,7 +9,7 @@
 struct ddb_list{
     uint32_t size;
     uint32_t i;
-    uint64_t list[0];
+    uintptr_t list[0];
 };
 
 struct ddb_list *ddb_list_new()
@@ -27,7 +27,7 @@ void ddb_list_free(struct ddb_list *list)
     free(list);
 }
 
-struct ddb_list *ddb_list_append(struct ddb_list *list, uint64_t e)
+struct ddb_list *ddb_list_append(struct ddb_list *list, uintptr_t e)
 {
     if (list->i == list->size){
         if (list->size >= UINT32_MAX - LIST_INCREMENT)
@@ -44,10 +44,10 @@ struct ddb_list *ddb_list_append(struct ddb_list *list, uint64_t e)
     return list;
 }
 
-uint64_t *ddb_list_pointer(const struct ddb_list *list, uint32_t *length)
+uintptr_t *ddb_list_pointer(const struct ddb_list *list, uint32_t *length)
 {
     *length = list->i;
-    return (uint64_t*)list->list;
+    return (uintptr_t*)list->list;
 }
 
 void ddb_list_mem_usage(const struct ddb_list *list,

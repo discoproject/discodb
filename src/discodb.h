@@ -5,8 +5,8 @@
 #include <stdint.h>
 #include <unistd.h>
 
-#define DDB_MAX_NUM_VALUES 4294967295
-#define DDB_MAX_NUM_KEYS 4294967295
+#define DDB_MAX_NUM_VALUES 4294967295U
+#define DDB_MAX_NUM_KEYS 4294967295U
 #define DDB_HASH_MIN_KEYS 25
 
 #define DDB_ERR_OUT_OF_MEMORY 1
@@ -24,6 +24,8 @@
 struct ddb_cons;
 struct ddb;
 struct ddb_cursor;
+struct ddb_view_cons;
+struct ddb_view;
 
 typedef uint64_t ddb_features_t[9];
 
@@ -57,6 +59,7 @@ struct ddb_query_clause{
 };
 
 struct ddb_cons *ddb_cons_new(void);
+struct ddb_cons *ddb_cons_ddb(struct ddb *db);
 void ddb_cons_free(struct ddb_cons *cons);
 
 int ddb_cons_add(struct ddb_cons *db,
@@ -88,6 +91,20 @@ int ddb_notfound(const struct ddb_cursor *c);
 const struct ddb_entry *ddb_next(struct ddb_cursor *cur, int *errcode);
 uint64_t ddb_resultset_size(const struct ddb_cursor *cur);
 uint64_t ddb_cursor_count(struct ddb_cursor *c, int *err);
+
+struct ddb_view_cons *ddb_view_cons_new(void);
+int ddb_view_cons_add(const struct ddb_view_cons *cons,
+                      const struct ddb_entry *value);
+struct ddb_view *ddb_view_cons_finalize(const struct ddb_view_cons *cons,
+                                        struct ddb *db);
+void ddb_view_cons_free(struct ddb_view_cons *cons);
+
+void ddb_view_free(struct ddb_view *view);
+struct ddb_cursor *ddb_query_view(struct ddb *db,
+                                  const struct ddb_query_clause *clauses,
+                                  uint32_t num_clauses,
+                                  const struct ddb_view *view);
+uint32_t ddb_view_size(const struct ddb_view *view);
 
 
 

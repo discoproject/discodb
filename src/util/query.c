@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
 
 #include <discodb.h>
 
@@ -69,7 +71,7 @@ static struct ddb_query_clause *parse_cnf(char **tokens, int num, int *num_claus
         for (i = 0; i < *num_clauses; i++){
                 printf("dbg Clause:\n");
                 for (j = 0; j < clauses[i].num_terms; j++){
-                        if (clauses[i].terms[j].not)
+                        if (clauses[i].terms[j].nnot)
                                 printf("dbg NOT ");
                         printf("dbg %.*s\n", clauses[i].terms[j].key.length,
                                 clauses[i].terms[j].key.data);
@@ -78,6 +80,52 @@ static struct ddb_query_clause *parse_cnf(char **tokens, int num, int *num_claus
         }
 #endif
         return clauses;
+}
+
+static struct ddb_view *load_view(const char *file, struct ddb *db)
+{
+    int fd, i, n;
+    struct stat nfo;
+    char *p;
+    struct ddb_view *view;
+    struct ddb_view_cons *cons;
+
+    if (!(cons = ddb_view_cons_new()))
+        return NULL;
+
+    if ((fd = open(file, O_RDONLY)) == -1)
+        return NULL;
+
+    if (fstat(fd, &nfo))
+        return NULL;
+
+    if (!(p = mmap(0, nfo.st_size, PROT_READ, MAP_SHARED, fd, 0)))
+        goto err;
+
+    close(fd);
+
+    i = n = 0;
+    while (i < nfo.st_size){
+        struct ddb_entry e;
+        e.data = &p[i];
+        e.length = 0;
+        while (i < nfo.st_size && p[i] != 10){
+            ++e.length;
+            ++i;
+        }
+        ++i;
+        if (ddb_view_cons_add(cons, &e))
+            goto err;
+    }
+    view = ddb_view_cons_finalize(cons, db);
+    ddb_view_cons_free(cons);
+    munmap(p, nfo.st_size);
+    return view;
+err:
+    ddb_view_cons_free(cons);
+    if (p)
+        munmap(p, nfo.st_size);
+    return NULL;
 }
 
 static struct ddb *open_discodb(const char *file)
@@ -104,13 +152,13 @@ static struct ddb *open_discodb(const char *file)
 
 #define FEAT(x) (long long unsigned int)feat[x]
 
+static const char yes[] = "true";
+static const char no[] = "false";
+const char *boolstr(int boolean) { return boolean ? yes: no; }
+
 static void print_info(struct ddb *db)
 {
-    static const char yes[] = "true";
-    static const char no[] = "false";
-    const char *boolstr(int boolean) { return boolean ? yes: no; }
     ddb_features_t feat;
-
     ddb_features(db, feat);
     printf("Total size:              %llu bytes\n", FEAT(DDB_TOTAL_SIZE));
     printf("Items size:              %llu bytes\n", FEAT(DDB_ITEMS_SIZE));
@@ -164,9 +212,21 @@ int main(int argc, char **argv)
                 }
                 int num_q = 0;
                 struct ddb_query_clause *q = parse_cnf(&argv[3], argc - 3, &num_q);
-                print_cursor(db, ddb_query(db, q, num_q));
+                char *view_file = getenv("VIEW");
+                struct ddb_view *view = NULL;
+                if (view_file){
+                    if ((view = load_view(view_file, db))){
+                        fprintf(stderr, "View loaded successfully (%d items)\n",
+                                ddb_view_size(view));
+                    }else{
+                        fprintf(stderr, "Loading view from %s failed\n", view_file);
+                        exit(1);
+                    }
+                }
+                print_cursor(db, ddb_query_view(db, q, num_q, view));
                 free(q[0].terms);
                 free(q);
+                ddb_view_free(view);
         }else
                 usage();
 

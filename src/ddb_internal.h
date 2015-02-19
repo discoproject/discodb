@@ -7,7 +7,7 @@
 #include <ddb_huffman.h>
 #include <ddb_delta.h>
 
-#define DISCODB_MAGIC 0x4D85BE61D14DE5B
+#define DISCODB_MAGIC 0x4D85BE61D14DE5BULL
 
 #define COMPRESS_MIN_TOTAL_SIZE (5 * 1024 * 1024)
 #define COMPRESS_MIN_AVG_VALUE_SIZE 6
@@ -75,6 +75,15 @@ struct ddb_values_cursor{
 
 #define WINDOW_SIZE_BYTES (WINDOW_SIZE >> 3)
 
+struct ddb_view_cons{
+    struct ddb_map *map;
+};
+
+struct ddb_view{
+    uint32_t num_values;
+    valueid_t values[0];
+};
+
 struct ddb_cnf_term{
     struct ddb_cursor *cursor;
     valueid_t (*next)(struct ddb_cnf_term*);
@@ -99,6 +108,11 @@ struct ddb_cnf_cursor{
     valueid_t base_id;
 };
 
+struct ddb_view_cursor{
+    const struct ddb_view *view;
+    uint32_t index;
+};
+
 struct ddb_cursor{
     const struct ddb *db;
 
@@ -112,6 +126,7 @@ struct ddb_cursor{
         struct ddb_unique_values_cursor uvalues;
         struct ddb_key_cursor keys;
         struct ddb_cnf_cursor cnf;
+        struct ddb_view_cursor view;
     } cursor;
     const struct ddb_entry *(*next)(struct ddb_cursor*);
 
@@ -125,6 +140,6 @@ const struct ddb_entry *ddb_cnf_cursor_next(struct ddb_cursor *c);
 
 valueid_t ddb_val_next(struct ddb_cnf_term *t);
 valueid_t ddb_not_next(struct ddb_cnf_term *t);
-
+valueid_t ddb_view_next(struct ddb_cnf_term *t);
 
 #endif /* __DDB_INTERNAL_H__ */

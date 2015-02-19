@@ -117,7 +117,7 @@ static struct ddb_map *collect_frequencies(const struct ddb_map *keys)
     struct ddb_map *freqs = NULL;
     struct ddb_map_cursor *c = NULL;
     struct ddb_entry key;
-    uint64_t *ptr;
+    uintptr_t *ptr;
     uint32_t i;
     int err = -1;
 
@@ -147,27 +147,27 @@ err:
     return freqs;
 }
 
+int compare(const void *p1, const void *p2)
+{
+  const struct sortpair *x = (const struct sortpair*)p1;
+  const struct sortpair *y = (const struct sortpair*)p2;
+
+  if (x->freq > y->freq)
+    return -1;
+  else if (x->freq < y->freq)
+    return 1;
+  return 0;
+}
+
 static int sort_symbols(const struct ddb_map *freqs,
     uint64_t *totalfreq, struct hnode *book)
 {
-    int cmp(const void *p1, const void *p2)
-    {
-        const struct sortpair *x = (const struct sortpair*)p1;
-        const struct sortpair *y = (const struct sortpair*)p2;
-
-        if (x->freq > y->freq)
-                return -1;
-        else if (x->freq < y->freq)
-                return 1;
-        return 0;
-    }
-
     int ret = -1;
     uint32_t i = *totalfreq = 0;
     struct ddb_map_cursor *c = NULL;
     struct sortpair *pairs;
     uint32_t symbol;
-    uint64_t *freq;
+    uintptr_t *freq;
     uint32_t num_symbols = ddb_map_num_items(freqs);
     if (!(pairs = calloc(num_symbols, sizeof(struct sortpair))))
         goto err;
@@ -179,7 +179,7 @@ static int sort_symbols(const struct ddb_map *freqs,
         pairs[i++].freq = *freq;
         *totalfreq += *freq;
     }
-    qsort(pairs, num_symbols, sizeof(struct sortpair), cmp);
+    qsort(pairs, num_symbols, sizeof(struct sortpair), compare);
 
     num_symbols = ret = MIN(DDB_CODEBOOK_SIZE, num_symbols);
     for (i = 0; i < num_symbols; i++){
@@ -201,7 +201,7 @@ static struct ddb_map *make_codebook(struct hnode *nodes, int num_symbols)
     while (i--){
         if (!nodes[i].num_bits)
             continue;
-        uint64_t *ptr = ddb_map_insert_int(book, nodes[i].symbol);
+        uintptr_t *ptr = ddb_map_insert_int(book, nodes[i].symbol);
         if (ptr)
             *ptr = nodes[i].code | (nodes[i].num_bits << 16);
         else{
@@ -217,7 +217,7 @@ int ddb_save_codemap(
     struct ddb_codebook book[DDB_CODEBOOK_SIZE])
 {
     uint32_t symbol;
-    uint64_t *ptr;
+    uintptr_t *ptr;
     struct ddb_map_cursor *c = NULL;
     if (!(c = ddb_map_cursor_new(codemap)))
         return -1;
@@ -275,18 +275,19 @@ err:
     return book;
 }
 
+void write_literal(uint64_t *offs, const char byte, char *buf)
+{
+  /* literal: prefix by a zero bit (offs + 1) */
+#ifdef HUFFMAN_DEBUG
+  fprintf(stderr, "ENC LITERAL: %c\n", byte);
+#endif
+  write_bits(buf, *offs + 1, byte & 255);
+  *offs += 9;
+}
+
 int ddb_compress(const struct ddb_map *codemap, const char *src,
             uint32_t src_len, uint32_t *size, char **buf, uint64_t *buf_len)
 {
-    void write_literal(uint64_t *offs, const char byte)
-    {
-        /* literal: prefix by a zero bit (offs + 1) */
-        #ifdef HUFFMAN_DEBUG
-        fprintf(stderr, "ENC LITERAL: %c\n", byte);
-        #endif
-        write_bits(*buf, *offs + 1, byte & 255);
-        *offs += 9;
-    }
     uint32_t code, i = 0;
     /* each byte takes 9 bits in the worst case
      * + 3 bits length (1 byte) + 8 to make write_bits safe */
@@ -302,7 +303,7 @@ int ddb_compress(const struct ddb_map *codemap, const char *src,
     if (src_len >= 4)
         for (;i < src_len - 4; i++){
             uint32_t key = *(uint32_t*)&src[i];
-            uint64_t *ptr = ddb_map_lookup_int(codemap, key);
+            uintptr_t *ptr = ddb_map_lookup_int(codemap, key);
             if (ptr){
                 uint32_t bits = DDB_HUFF_BITS(*ptr);
                 /* codeword: prefix code by an up bit */
@@ -317,11 +318,11 @@ int ddb_compress(const struct ddb_map *codemap, const char *src,
                 offs += bits + 1;
                 i += 3;
             }else{
-                write_literal(&offs, src[i]);
+                write_literal(&offs, src[i], *buf);
             }
         }
     for (;i < src_len; i++)
-        write_literal(&offs, src[i]);
+        write_literal(&offs, src[i], *buf);
 
     if ((offs >> 3) >= UINT_MAX)
         return -1;
