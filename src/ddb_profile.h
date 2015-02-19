@@ -2,14 +2,17 @@
 #ifndef __DDB_PROFILE_H__
 #define __DDB_PROFILE_H__
 
-#include <time.h>
+#include <sys/time.h>
 #include <stdio.h>
 
 #ifdef DDB_PROFILE
-#define DDB_TIMER_DEF clock_t __start;
-#define DDB_TIMER_START __start = clock();
-#define DDB_TIMER_END(msg) fprintf(stderr, "PROF: %s took %2.4fms\n", msg,\
-        ((double) (clock() - __start)) / (CLOCKS_PER_SEC / 1000.0));
+#define DDB_TIMER_DEF struct timeval __start; struct timeval __end;
+#define DDB_TIMER_START gettimeofday(&__start, NULL);
+#define DDB_TIMER_END(msg)\
+        gettimeofday(&__end, NULL);\
+        fprintf(stderr, "PROF: %s took %2.4fms\n", msg,\
+            ((__end.tv_sec * 1000000LLU + __end.tv_usec) -\
+             (__start.tv_sec * 1000000LLU + __start.tv_usec)) / (double)1000.0);
 #else
 #define DDB_TIMER_DEF
 #define DDB_TIMER_START
