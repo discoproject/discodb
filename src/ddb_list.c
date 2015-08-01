@@ -34,7 +34,7 @@ struct ddb_list *ddb_list_append(struct ddb_list *list, uintptr_t e)
             list->size = UINT32_MAX;
         else
             list->size += LIST_INCREMENT;
-        if (!(list = realloc(list, sizeof(struct ddb_list) + list->size * 8)))
+        if (!(list = realloc(list, sizeof(struct ddb_list) + (uint64_t)list->size * 8)))
             return NULL;
     }
     if (list->i == UINT32_MAX)
