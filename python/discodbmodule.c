@@ -546,6 +546,8 @@ static PyMethodDef DiscoDBConstructor_methods[] = {
      "c.add(k, v) -> add (k, v) to the DiscoDB that will be produced."},
     {"merge", (PyCFunction)DiscoDBConstructor_merge, METH_VARARGS,
      "c.merge(ddb) -> merge (ddb) keys and values into the DiscoDB ."},
+    {"merge_with_explicit_value", (PyCFunction)DiscoDBConstructor_merge_with_explicit_value, METH_VARARGS,
+     "c.merge_with_explicit_value(ddb, value_str) -> merge (ddb) keys and replaces value with named value_str into the DiscoDB ."},
     {"finalize", (PyCFunction)DiscoDBConstructor_finalize, METH_KEYWORDS,
      "c.finalize([flags]) -> a DiscoDB containing the mappings added to c."},
     {NULL}                                    /* Sentinel          */
@@ -655,6 +657,25 @@ DiscoDBConstructor_merge(DiscoDBConstructor *self, PyObject *item)
         while ((ventry = ddb_next(value_cursor, &errcode))){
             ddb_cons_add(self->ddb_cons, kentry, ventry);
         }
+    }
+    Done:
+        if (PyErr_Occurred())
+          return NULL;
+
+    Py_RETURN_NONE;
+}
+static PyObject *
+DiscoDBConstructor_merge_with_explicit_value(DiscoDBConstructor *self, PyObject *item)
+{
+    int errcode;
+    const struct ddb_entry *kentry;
+    DiscoDB *ddb = NULL;
+    struct ddb_entry explicit_ventry;
+    if (!PyArg_ParseTuple(item, "O!s#", &DiscoDBType, &ddb, &explicit_ventry.data, &explicit_ventry.length))
+        goto Done;
+    struct ddb_cursor *key_cursor = ddb_keys(ddb->discodb);
+    while ((kentry = ddb_next(key_cursor, &errcode))){
+        ddb_cons_add(self->ddb_cons, kentry, &explicit_ventry);
     }
     Done:
         if (PyErr_Occurred())

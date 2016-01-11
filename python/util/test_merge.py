@@ -22,3 +22,9 @@ print [k for k in oo.keys()]
 print [v for v in oo.values()]
 with open("/tmp/qfd2", 'wb') as f:
     oo.dump(f)
+d = discodb.DiscoDBConstructor()
+with open("/tmp/qfd2", 'rb') as f:
+    e = discodb.DiscoDB.load(f)
+d.merge_with_explicit_value(e, "new_value_for_all_keys")
+oo2 = d.finalize(unique_items=True)
+[v for v in oo2.values()]
