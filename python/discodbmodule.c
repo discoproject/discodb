@@ -659,6 +659,8 @@ DiscoDBConstructor_merge(DiscoDBConstructor *self, PyObject *item)
         }
     }
     Done:
+        if (ddb_cursor != NULL)
+            ddb_cursor_dealloc(ddb_cursor);
         if (PyErr_Occurred())
           return NULL;
 
@@ -674,13 +676,14 @@ DiscoDBConstructor_merge_with_explicit_value(DiscoDBConstructor *self, PyObject 
     if (!PyArg_ParseTuple(item, "O!s#", &DiscoDBType, &ddb, &explicit_ventry.data, &explicit_ventry.length))
         goto Done;
     struct ddb_cursor *key_cursor = ddb_keys(ddb->discodb);
-    while ((kentry = ddb_next(key_cursor, &errcode))){
+    while ((kentry = ddb_next(key_cursor, &errcode))) {
         ddb_cons_add(self->ddb_cons, kentry, &explicit_ventry);
     }
     Done:
+        if (ddb_cursor != NULL)
+            ddb_cursor_dealloc(ddb_cursor);
         if (PyErr_Occurred())
           return NULL;
-
     Py_RETURN_NONE;
 }
 static PyObject *
