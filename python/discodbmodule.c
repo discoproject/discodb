@@ -647,20 +647,29 @@ DiscoDBConstructor_merge(DiscoDBConstructor *self, PyObject *item)
     int errcode;
     const struct ddb_entry *kentry;
     const struct ddb_entry *ventry;
+    struct ddb_cursor *key_cursor = NULL;
+    struct ddb_cursor *value_cursor = NULL;
+
     PyObject *data = NULL;
     DiscoDB *ddb = NULL;
     if (!PyArg_ParseTuple(item, "O!O", &DiscoDBType, &ddb, &data))
         goto Done;
-    struct ddb_cursor *key_cursor = ddb_keys(ddb->discodb);
+    key_cursor = ddb_keys(ddb->discodb);
     while ((kentry = ddb_next(key_cursor, &errcode))){
-        struct ddb_cursor *value_cursor = ddb_getitem(ddb->discodb, kentry);
+        value_cursor = ddb_getitem(ddb->discodb, kentry);
         while ((ventry = ddb_next(value_cursor, &errcode))){
             ddb_cons_add(self->ddb_cons, kentry, ventry);
         }
+        if (value_cursor != NULL){
+            ddb_cursor_dealloc(value_cursor);
+            value_cursor = NULL;
+        }
     }
     Done:
-        if (ddb_cursor != NULL)
-            ddb_cursor_dealloc(ddb_cursor);
+        if (key_cursor != NULL)
+            ddb_cursor_dealloc(key_cursor);
+        if (value_cursor != NULL)
+            ddb_cursor_dealloc(value_cursor);
         if (PyErr_Occurred())
           return NULL;
 
@@ -671,17 +680,18 @@ DiscoDBConstructor_merge_with_explicit_value(DiscoDBConstructor *self, PyObject 
 {
     int errcode;
     const struct ddb_entry *kentry;
+    struct ddb_cursor *key_cursor = NULL;
     DiscoDB *ddb = NULL;
     struct ddb_entry explicit_ventry;
     if (!PyArg_ParseTuple(item, "O!s#", &DiscoDBType, &ddb, &explicit_ventry.data, &explicit_ventry.length))
         goto Done;
-    struct ddb_cursor *key_cursor = ddb_keys(ddb->discodb);
+    key_cursor = ddb_keys(ddb->discodb);
     while ((kentry = ddb_next(key_cursor, &errcode))) {
         ddb_cons_add(self->ddb_cons, kentry, &explicit_ventry);
     }
     Done:
-        if (ddb_cursor != NULL)
-            ddb_cursor_dealloc(ddb_cursor);
+        if (key_cursor != NULL)
+            ddb_cursor_dealloc(key_cursor);
         if (PyErr_Occurred())
           return NULL;
     Py_RETURN_NONE;
