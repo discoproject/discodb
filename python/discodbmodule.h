@@ -52,6 +52,8 @@ static PyTypeObject DiscoDBConstructorType;
 static PyObject * DiscoDBConstructor_new     (PyTypeObject *,       PyObject *, PyObject *);
 static void       DiscoDBConstructor_dealloc (DiscoDBConstructor *);
 static PyObject * DiscoDBConstructor_add     (DiscoDBConstructor *, PyObject *);
+static PyObject * DiscoDBConstructor_merge   (DiscoDBConstructor *, PyObject *);
+static PyObject * DiscoDBConstructor_merge_with_explicit_value   (DiscoDBConstructor *, PyObject *);
 static PyObject * DiscoDBConstructor_finalize(DiscoDBConstructor *, PyObject *, PyObject *);
 
 /* DiscoDB Iterator Types */
